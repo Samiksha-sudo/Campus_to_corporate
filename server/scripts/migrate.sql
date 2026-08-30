@@ -1,0 +1,151 @@
+USE campus_to_corporate;
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  role ENUM('CUSTOMER','CAREER_SPECIALIST','CV_WRITER','APPLICATION_SPECIALIST','ADMIN','SUPER_ADMIN') NOT NULL DEFAULT 'CUSTOMER',
+  email_verified TINYINT NOT NULL DEFAULT 0,
+  profile_complete TINYINT NOT NULL DEFAULT 0,
+  avatar_url TEXT,
+  phone VARCHAR(30),
+  linkedin_url VARCHAR(500),
+  location VARCHAR(255),
+  job_title VARCHAR(255),
+  years_experience TINYINT,
+  target_salary_min VARCHAR(20),
+  target_salary_max VARCHAR(20),
+  bio TEXT,
+  stripe_customer_id VARCHAR(100),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP,
+  INDEX idx_users_email (email),
+  INDEX idx_users_role (role)
+);
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  token_hash VARCHAR(255) NOT NULL UNIQUE,
+  family VARCHAR(36) NOT NULL,
+  used TINYINT NOT NULL DEFAULT 0,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_rt_user (user_id),
+  INDEX idx_rt_family (family)
+);
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  token_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ev_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  token_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pr_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  plan ENUM('EXPLORE','LAUNCH','MOMENTUM','GUIDED') NOT NULL DEFAULT 'EXPLORE',
+  status ENUM('ACTIVE','PAST_DUE','CANCELED','TRIALING','INCOMPLETE') NOT NULL DEFAULT 'ACTIVE',
+  stripe_subscription_id VARCHAR(100),
+  stripe_price_id VARCHAR(100),
+  current_period_start TIMESTAMP NULL,
+  current_period_end TIMESTAMP NULL,
+  cancel_at_period_end TINYINT NOT NULL DEFAULT 0,
+  trial_end TIMESTAMP NULL,
+  cv_credits_used INT NOT NULL DEFAULT 0,
+  apply_credits_used INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_sub_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  service_type VARCHAR(100) NOT NULL,
+  status ENUM('PENDING','PAID','PROCESSING','COMPLETE','REFUNDED') NOT NULL DEFAULT 'PENDING',
+  amount_pence INT NOT NULL,
+  stripe_payment_intent_id VARCHAR(100),
+  notes TEXT,
+  completed_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_orders_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS evidence (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(100),
+  skills JSON,
+  source VARCHAR(100),
+  date_achieved DATE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_evidence_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS cvs (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  content JSON,
+  target_role VARCHAR(255),
+  target_company VARCHAR(255),
+  status ENUM('DRAFT','COMPLETE','ARCHIVED') NOT NULL DEFAULT 'DRAFT',
+  file_url TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_cvs_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  company VARCHAR(255) NOT NULL,
+  role VARCHAR(255) NOT NULL,
+  status ENUM('SAVED','APPLIED','INTERVIEW','OFFER','REJECTED','WITHDRAWN') NOT NULL DEFAULT 'SAVED',
+  job_url TEXT,
+  notes TEXT,
+  applied_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_apps_user (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS gmail_connections (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL UNIQUE,
+  gmail_email VARCHAR(255) NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  token_expiry TIMESTAMP NOT NULL,
+  last_synced_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_gmail_user (user_id)
+);
+
+SELECT CONCAT('✓ Created: ', table_name) AS status
+FROM information_schema.tables
+WHERE table_schema = 'campus_to_corporate'
+ORDER BY table_name;
