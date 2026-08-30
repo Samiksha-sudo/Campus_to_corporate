@@ -40,7 +40,7 @@ export async function createCheckoutSession(userId: string, plan: string): Promi
     line_items:           [{ price: priceId, quantity: 1 }],
     success_url:          `${env.APP_URL}/app/payment-success?plan=${plan}`,
     cancel_url:           `${env.APP_URL}/app/settings?payment=cancelled`,
-    subscription_data:    { trial_period_days: 3, metadata: { userId, plan } },
+    subscription_data:    { metadata: { userId, plan } },
   })
 
   return session.url!
