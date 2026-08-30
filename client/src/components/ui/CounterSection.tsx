@@ -26,7 +26,7 @@ const stats = [
   { value: 94,   suffix: '%',   prefix: '',  label: 'CV approval rate',           sublabel: 'of CVs pass ATS on first submit' },
   { value: 14,   suffix: '',    prefix: '',  label: 'Days to first interview',     sublabel: 'average across all plans'        },
   { value: 3,    suffix: '×',   prefix: '',  label: 'More interview callbacks',    sublabel: 'vs self-managed search'          },
-  { value: 400,  suffix: '+',   prefix: '',  label: 'Applications per week',       sublabel: 'on the Momentum plan'           },
+  { value: 200,  suffix: '+',   prefix: '',  label: 'Applications per week',       sublabel: 'on the Momentum plan'           },
 ]
 
 export function CounterSection() {
