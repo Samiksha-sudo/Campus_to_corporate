@@ -319,16 +319,6 @@ export default function ApplicationsPage() {
                           {app.roleFitScore}% fit
                         </span>
                       )}
-                      {/* Approval pill */}
-                      {app.userApproved ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
-                          <CheckCircle2 size={11} /> Approved
-                        </span>
-                      ) : !inactive ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-medium">
-                          Pending approval
-                        </span>
-                      ) : null}
                     </div>
                   </div>
 

@@ -1,8 +1,8 @@
 import { useQuery }     from '@tanstack/react-query'
 import { Link }         from 'react-router-dom'
 import {
-  FileText, Briefcase, CheckCircle2, ArrowRight,
-  TrendingUp, Clock, AlertCircle, Star,
+  FileText, Briefcase, ArrowRight,
+  TrendingUp, AlertCircle, Star,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { ROUTES }       from '@/config/routes'
@@ -130,7 +130,6 @@ export default function DashboardPage() {
   const primaryCV       = cvs.find(c => c.isPrimary)
   const approvedCVs     = cvs.filter(c => c.status === 'APPROVED').length
   const activeApps      = apps.filter(a => !['REJECTED','WITHDRAWN'].includes(a.status)).length
-  const pendingApproval = apps.filter(a => !a.userApproved && !['REJECTED','WITHDRAWN'].includes(a.status)).length
   const interviews      = apps.filter(a => ['SCREENING','ASSESSMENT','ASSESSMENT_SUBMITTED','HIRING_MANAGER_INTERVIEW','TECHNICAL_INTERVIEW','SYSTEM_DESIGN_INTERVIEW','CODING_INTERVIEW','SECOND_ROUND','THIRD_ROUND','FINAL_ROUND'].includes(a.status)).length
 
   const hour  = new Date().getHours()
@@ -166,19 +165,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Action items — hide for admins */}
-      {user?.role !== 'ADMIN' && (pendingApproval > 0 || !primaryCV || cvs.filter(c => c.status === 'REQUIRES_CHANGES').length > 0) && (
+      {user?.role !== 'ADMIN' && (!primaryCV || cvs.filter(c => c.status === 'REQUIRES_CHANGES').length > 0) && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Needs your attention</p>
-
-          {pendingApproval > 0 && (
-            <Link to={ROUTES.APPLICATIONS} className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors">
-              <AlertCircle size={16} className="text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800 flex-1">
-                <strong>{pendingApproval} application{pendingApproval > 1 ? 's' : ''}</strong> waiting for your approval
-              </p>
-              <ArrowRight size={14} className="text-amber-400 shrink-0" />
-            </Link>
-          )}
 
           {!primaryCV && cvs.length === 0 && (
             <Link to={ROUTES.CVS} className="flex items-center gap-3 bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 hover:bg-brand-100 transition-colors">
@@ -217,18 +206,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-slate-800 truncate">{app.jobTitle}</p>
                   <p className="text-xs text-slate-400 truncate">{app.companyName}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {!app.userApproved && (
-                    <span className="text-xs text-amber-600 flex items-center gap-1">
-                      <Clock size={11} /> Needs approval
-                    </span>
-                  )}
-                  {app.userApproved && (
-                    <span className="text-xs text-emerald-600 flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Approved
-                    </span>
-                  )}
-                </div>
+                <div className="flex items-center gap-2"></div>
               </div>
             ))}
           </div>

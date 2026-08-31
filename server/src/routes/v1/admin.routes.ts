@@ -39,7 +39,6 @@ router.get('/users', asyncHandler(async (_req, res) => {
 
     // Active pipeline (not rejected/withdrawn)
     const activeApps      = allApps.filter(a => !['REJECTED','WITHDRAWN'].includes(a.status))
-    const pendingApproval = allApps.filter(a => !a.userApproved && !['REJECTED','WITHDRAWN'].includes(a.status))
     const appliedCount    = allApps.filter(a => !['RECRUITER_OUTREACH','UNKNOWN'].includes(a.status)).length
     const interviewCount  = allApps.filter(a => ['SCREENING','ASSESSMENT','ASSESSMENT_SUBMITTED','HIRING_MANAGER_INTERVIEW','TECHNICAL_INTERVIEW','SYSTEM_DESIGN_INTERVIEW','CODING_INTERVIEW','SECOND_ROUND','THIRD_ROUND','FINAL_ROUND'].includes(a.status)).length
     const offerCount      = allApps.filter(a => a.status === 'OFFER').length
@@ -78,7 +77,6 @@ router.get('/users', asyncHandler(async (_req, res) => {
     if (allCVs.some(c => c.status === 'REQUIRES_CHANGES'))    needs.push('CV needs changes')
     if (sub?.status === 'PAST_DUE')                           needs.push('Payment issue')
     if (sub?.status === 'TRIALING')                           needs.push('Trial → convert')
-    if (pendingApproval.length > 0)                           needs.push(`${pendingApproval.length} job${pendingApproval.length > 1 ? 's' : ''} to approve`)
     if (activeApps.length === 0 && plan !== 'EXPLORE')        needs.push('Start applying')
 
     return {
@@ -101,8 +99,8 @@ router.get('/users', asyncHandler(async (_req, res) => {
       weeklyAppsRemaining: weeklyRemaining,
 
       // Application counts
-      totalApps:     allApps.length,
-      activeApps:    activeApps.length,
+      totalApps:  allApps.length,
+      activeApps: activeApps.length,
       appliedCount,
       interviewCount,
       offerCount,
