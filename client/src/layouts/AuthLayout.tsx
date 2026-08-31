@@ -26,9 +26,7 @@ export default function AuthLayout() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-8">
           <Link to={ROUTES.HOME} className="flex items-center gap-3">
-            <div className="bg-slate-900 rounded-xl p-1 shadow-sm">
-              <img src="/logo.png" alt="" className="h-10 w-auto rounded-lg" />
-            </div>
+            <img src="/logo.png" alt="" className="h-11 w-auto" />
             <span className="font-display font-bold text-xl text-slate-900">Campus to Corporate</span>
           </Link>
         </div>

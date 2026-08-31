@@ -39,10 +39,8 @@ export default function PublicLayout() {
       )}>
         <nav className="container-xl flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to={ROUTES.HOME} className="flex items-center gap-2.5 group">
-            <div className="bg-slate-900 rounded-xl p-1 shadow-sm group-hover:shadow-md group-hover:shadow-brand-400/30 transition-shadow duration-200">
-              <img src="/logo.png" alt="" className="h-9 w-auto rounded-lg" />
-            </div>
+          <Link to={ROUTES.HOME} className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="" className="h-10 w-auto" />
             <span className="font-display font-bold text-lg text-slate-900 hidden sm:block">Campus to Corporate</span>
           </Link>
 
