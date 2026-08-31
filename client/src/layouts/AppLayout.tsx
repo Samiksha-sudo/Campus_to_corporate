@@ -41,8 +41,11 @@ export default function AppLayout() {
         {/* Logo row */}
         <div className="flex items-center justify-between h-16 px-3 border-b border-slate-100 shrink-0">
           {!sidebarCollapsed && (
-            <Link to={ROUTES.HOME} className="flex items-center gap-2">
-              <img src="/logo.png" alt="Campus to Corporate" className="h-8 w-auto" />
+            <Link to={ROUTES.HOME} className="flex items-center gap-2.5 group">
+              <div className="bg-slate-900 rounded-xl p-1 shadow-sm group-hover:shadow-md group-hover:shadow-brand-400/30 transition-shadow duration-200 shrink-0">
+                <img src="/logo.png" alt="" className="h-8 w-auto rounded-lg" />
+              </div>
+              <span className="font-display font-bold text-sm text-slate-900 truncate">Campus to Corporate</span>
             </Link>
           )}
           <button
