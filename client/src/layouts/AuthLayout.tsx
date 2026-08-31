@@ -7,10 +7,7 @@ export default function AuthLayout() {
       {/* Left brand panel — hidden on small screens */}
       <div className="hidden lg:flex lg:w-1/2 bg-brand-600 flex-col justify-between p-12">
         <Link to={ROUTES.HOME} className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-            <span className="text-white font-display font-bold text-sm">R</span>
-          </div>
-          <span className="font-display font-bold text-xl text-white">Campus to Corporate</span>
+          <img src="/logo.png" alt="Campus to Corporate" className="h-10 w-auto" />
         </Link>
         <div>
           <blockquote className="text-white/90 text-xl font-display leading-relaxed mb-6">
@@ -28,10 +25,7 @@ export default function AuthLayout() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-8">
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-display font-bold text-sm">R</span>
-            </div>
-            <span className="font-display font-bold text-xl text-slate-900">Campus to Corporate</span>
+            <img src="/logo.png" alt="Campus to Corporate" className="h-9 w-auto" />
           </Link>
         </div>
 

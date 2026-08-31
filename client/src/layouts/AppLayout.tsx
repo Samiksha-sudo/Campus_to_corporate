@@ -42,10 +42,7 @@ export default function AppLayout() {
         <div className="flex items-center justify-between h-16 px-3 border-b border-slate-100 shrink-0">
           {!sidebarCollapsed && (
             <Link to={ROUTES.HOME} className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-brand-600 rounded-md flex items-center justify-center">
-                <span className="text-white font-display font-bold text-xs">C</span>
-              </div>
-              <span className="font-display font-bold text-slate-900">Campus to Corporate</span>
+              <img src="/logo.png" alt="Campus to Corporate" className="h-8 w-auto" />
             </Link>
           )}
           <button

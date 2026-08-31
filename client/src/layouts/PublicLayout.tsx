@@ -40,10 +40,7 @@ export default function PublicLayout() {
         <nav className="container-xl flex items-center justify-between h-16">
           {/* Logo */}
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-display font-bold text-sm">R</span>
-            </div>
-            <span className="font-display font-bold text-xl text-slate-900">Campus to Corporate</span>
+            <img src="/logo.png" alt="Campus to Corporate" className="h-9 w-auto" />
           </Link>
 
           {/* Desktop links */}
@@ -135,10 +132,7 @@ export default function PublicLayout() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link to={ROUTES.HOME} className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-brand-600 rounded-md flex items-center justify-center">
-                  <span className="text-white font-display font-bold text-xs">R</span>
-                </div>
-                <span className="font-display font-bold text-white">Campus to Corporate</span>
+                <img src="/logo.png" alt="Campus to Corporate" className="h-8 w-auto" />
               </Link>
               <p className="text-sm leading-relaxed">Your career, managed.</p>
             </div>
