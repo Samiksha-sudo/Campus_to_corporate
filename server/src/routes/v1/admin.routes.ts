@@ -114,6 +114,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
       // Services
       gmail:  gmail ? { email: gmail.email, lastSync: gmail.lastSync } : null,
       needs,
+      cvReviewDone: !!(sub?.cvReviewDone),
 
       // Features available on their plan
       features: {
@@ -164,6 +165,18 @@ router.patch('/users/:id/plan', asyncHandler(async (req, res) => {
     await db.update(subscriptions).set({ plan: plan as never }).where(eq(subscriptions.userId, req.params.id))
   }
   res.json({ success: true, data: { message: `Plan updated to ${plan}` } })
+}))
+
+// PATCH /api/admin/users/:id/cv-review — mark starter CV review as done/undone
+router.patch('/users/:id/cv-review', asyncHandler(async (req, res) => {
+  const { done } = req.body as { done: boolean }
+  const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, req.params.id)).limit(1)
+  if (!sub) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Subscription not found' } })
+    return
+  }
+  await db.update(subscriptions).set({ cvReviewDone: done ? 1 : 0 }).where(eq(subscriptions.userId, req.params.id))
+  res.json({ success: true, data: { cvReviewDone: done } })
 }))
 
 export default router

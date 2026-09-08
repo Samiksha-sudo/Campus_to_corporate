@@ -29,6 +29,7 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
       trialEnd:               sub?.trialEnd ?? null,
       currentPeriodEnd:       sub?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd:      sub?.cancelAtPeriodEnd ?? 0,
+      cvReviewDone:           !!(sub?.cvReviewDone),
     },
   })
 }))

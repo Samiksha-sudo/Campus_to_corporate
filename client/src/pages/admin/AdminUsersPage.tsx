@@ -35,6 +35,7 @@ interface AdminUser {
   gmail:         { email: string; lastSync: string | null } | null
   needs:         string[]
   features:      { weeklyApplications: number; coverLetters: boolean; linkedIn: boolean; interviewGuarantee: boolean; cvChanges: number }
+  cvReviewDone:  boolean
 }
 
 interface AdminStats {
@@ -52,6 +53,11 @@ const PLAN_BADGE: Record<string, string> = {
   EXPLORE:  'bg-slate-100 text-slate-600 ring-slate-200',
   LAUNCH:   'bg-blue-50 text-blue-700 ring-blue-200',
   MOMENTUM: 'bg-violet-50 text-violet-700 ring-violet-200',
+}
+const PLAN_LABEL: Record<string, string> = {
+  EXPLORE:  'Starter',
+  LAUNCH:   'Launch',
+  MOMENTUM: 'Momentum',
 }
 const STATUS_DOT: Record<string, string> = {
   ACTIVE:     'bg-emerald-400',
@@ -189,7 +195,7 @@ function CustomerItem({ u, selected, onClick, index }: {
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <span className={`text-[9px] font-bold rounded-full px-1.5 py-0.5 ring-1 ${selected ? 'bg-white/20 text-white ring-white/30' : PLAN_BADGE[u.plan] ?? 'bg-slate-100 text-slate-600 ring-slate-200'}`}>
-          {u.plan}
+          {PLAN_LABEL[u.plan] ?? u.plan}
         </span>
         {isUrgent && <AlertTriangle size={10} className={selected ? 'text-yellow-300' : 'text-red-400'} />}
       </div>
@@ -202,6 +208,10 @@ function CustomerDetail({ u }: { u: AdminUser }) {
   const qc = useQueryClient()
   const changePlan = useMutation({
     mutationFn: (plan: string) => api.patch(`/admin/users/${u.id}/plan`, { plan }),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+  const toggleCvReview = useMutation({
+    mutationFn: (done: boolean) => api.patch(`/admin/users/${u.id}/cv-review`, { done }),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
   })
 
@@ -236,7 +246,7 @@ function CustomerDetail({ u }: { u: AdminUser }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-display font-bold">{u.name}</h2>
-              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">{u.plan}</span>
+              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">{PLAN_LABEL[u.plan] ?? u.plan}</span>
               <span className={`w-2 h-2 rounded-full ${STATUS_DOT[u.planStatus] ?? 'bg-slate-300'}`} />
               <span className="text-xs text-white/70">{u.planStatus}</span>
             </div>
@@ -285,6 +295,29 @@ function CustomerDetail({ u }: { u: AdminUser }) {
               </div>
             ))}
             {u.gmail && <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-2 py-1 truncate">{u.gmail.email}</p>}
+
+            {u.plan === 'EXPLORE' && (
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Starter CV review done</span>
+                  <button
+                    onClick={() => toggleCvReview.mutate(!u.cvReviewDone)}
+                    disabled={toggleCvReview.isPending}
+                    className={`relative w-10 h-5 rounded-full transition-colors focus:outline-none ${
+                      u.cvReviewDone ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}
+                    title={u.cvReviewDone ? 'Mark as not done' : 'Mark as done'}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      u.cvReviewDone ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  {u.cvReviewDone ? 'Visible to user as complete ✓' : 'Tick when you\'ve reviewed their CV'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -354,7 +387,7 @@ function CustomerDetail({ u }: { u: AdminUser }) {
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {plan[0] + plan.slice(1).toLowerCase()}
+                  {PLAN_LABEL[plan] ?? plan}
                 </button>
               ))}
             </div>
@@ -447,7 +480,7 @@ export default function AdminUsersPage() {
                     : 'text-slate-500 hover:bg-slate-100'
                 }`}
               >
-                {p === 'ALL' ? 'All' : p[0] + p.slice(1).toLowerCase()}
+                {p === 'ALL' ? 'All' : (PLAN_LABEL[p] ?? p)}
               </button>
             ))}
           </div>

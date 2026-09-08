@@ -2,7 +2,7 @@ import { useQuery }     from '@tanstack/react-query'
 import { Link }         from 'react-router-dom'
 import {
   FileText, Briefcase, ArrowRight,
-  TrendingUp, AlertCircle, Star,
+  TrendingUp, AlertCircle, Star, CheckCircle2, ClipboardCheck,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { ROUTES }       from '@/config/routes'
@@ -10,18 +10,18 @@ import api              from '@/services/api'
 
 interface CV          { id: string; title: string; status: string; isPrimary: number }
 interface Application { id: string; companyName: string; jobTitle: string; status: string; userApproved: number }
-interface SubData     { plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null }
+interface SubData     { plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null; cvReviewDone?: boolean }
 
 const PLAN_LABEL: Record<string, string> = {
-  STARTER:  'Starter (Free)',
-  EXPLORE:  'Explore · £10/mo',
+  STARTER:  'Starter · Free',
+  EXPLORE:  'Starter · Free',
   LAUNCH:   'Launch · £20/mo',
   MOMENTUM: 'Momentum · £40/mo',
 }
 
 const PLAN_COLOR: Record<string, string> = {
   STARTER:  'bg-slate-100 text-slate-600',
-  EXPLORE:  'bg-slate-100 text-slate-700',
+  EXPLORE:  'bg-slate-100 text-slate-600',
   LAUNCH:   'bg-blue-50 text-blue-700',
   MOMENTUM: 'bg-violet-50 text-violet-700',
 }
@@ -48,26 +48,53 @@ function StatCard({ icon: Icon, label, value, sub, href, color = 'bg-brand-50 te
   return href ? <Link to={href}>{card}</Link> : card
 }
 
-function PlanBanner({ plan, status, weeklyUsed, trialEnd }: SubData & { weeklyUsed: number }) {
+function PlanBanner({ plan, status, weeklyUsed, trialEnd, cvReviewDone }: SubData & { weeklyUsed: number }) {
   const limit = WEEKLY_LIMIT[plan] ?? 0
   const pct   = limit > 0 ? Math.min(100, Math.round((weeklyUsed / limit) * 100)) : 0
 
   if (plan === 'EXPLORE') {
     return (
-      <div className="bg-gradient-to-r from-brand-600 to-violet-600 rounded-2xl p-5 text-white">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold opacity-80 mb-1">You're on the free plan</p>
-            <h2 className="text-xl font-display font-bold mb-2">Upgrade to start getting interviews</h2>
-            <p className="text-sm opacity-80">Launch gives you 50 job applications per week + 1 guaranteed interview per month.</p>
+      <div className="space-y-3">
+        <div className="bg-gradient-to-r from-brand-600 to-violet-600 rounded-2xl p-5 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold opacity-80 mb-1">You're on the Starter plan</p>
+              <h2 className="text-xl font-display font-bold mb-2">Upgrade to start getting interviews</h2>
+              <p className="text-sm opacity-80">Launch gives you 50 job applications per week + 1 guaranteed interview per month.</p>
+            </div>
+            <Link
+              to={ROUTES.SETTINGS}
+              className="shrink-0 bg-white text-brand-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-brand-50 transition-colors"
+            >
+              Upgrade
+            </Link>
           </div>
-          <Link
-            to={ROUTES.SETTINGS}
-            className="shrink-0 bg-white text-brand-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-brand-50 transition-colors"
-          >
-            Upgrade
-          </Link>
         </div>
+
+        {/* Starter CV review status */}
+        {cvReviewDone ? (
+          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+            <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-800">CV Review Complete</p>
+              <p className="text-xs text-emerald-600">Our specialist has reviewed your CV — check your CVs page for feedback.</p>
+            </div>
+            <Link to={ROUTES.CVS} className="shrink-0 text-xs font-semibold text-emerald-700 hover:underline">
+              View CVs
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
+            <ClipboardCheck size={18} className="text-violet-500 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-violet-800">Free CV Review — included in your Starter plan</p>
+              <p className="text-xs text-violet-600">Upload your CV and we'll review it for free. Our specialist will give you personalised feedback.</p>
+            </div>
+            <Link to={ROUTES.CVS} className="shrink-0 bg-violet-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-violet-700 transition-colors">
+              Upload CV
+            </Link>
+          </div>
+        )}
       </div>
     )
   }
@@ -116,16 +143,16 @@ export default function DashboardPage() {
     queryKey: ['applications'],
     queryFn:  () => api.get('/applications').then(r => r.data.data),
   })
-  const { data: stripeData } = useQuery<{ plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null }>({
+  const { data: stripeData } = useQuery<{ plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null; cvReviewDone: boolean }>({
     queryKey: ['subscription'],
     queryFn:  () => api.get('/stripe/subscription').then(r => r.data.data).catch(() => ({
-      plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null,
+      plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null, cvReviewDone: false,
     })),
   })
 
   const cvs  = cvsData?.cvs  ?? []
   const apps = appsData?.applications ?? []
-  const sub  = stripeData ?? { plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null }
+  const sub  = stripeData ?? { plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null, cvReviewDone: false }
 
   const primaryCV       = cvs.find(c => c.isPrimary)
   const approvedCVs     = cvs.filter(c => c.status === 'APPROVED').length
@@ -153,6 +180,7 @@ export default function DashboardPage() {
           weeklyApplicationsUsed={sub.weeklyApplicationsUsed}
           weeklyUsed={sub.weeklyApplicationsUsed}
           trialEnd={sub.trialEnd}
+          cvReviewDone={sub.cvReviewDone}
         />
       )}
 

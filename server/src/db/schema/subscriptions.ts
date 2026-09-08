@@ -21,6 +21,7 @@ export const subscriptions = mysqlTable('subscriptions', {
   applyCreditsUsed:        int('apply_credits_used').notNull().default(0),
   weeklyApplicationsUsed:  int('weekly_applications_used').notNull().default(0),
   weekStartedAt:           timestamp('week_started_at'),
+  cvReviewDone:            tinyint('cv_review_done').notNull().default(0),
   createdAt:            timestamp('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt:            timestamp('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 }, (t) => ({
