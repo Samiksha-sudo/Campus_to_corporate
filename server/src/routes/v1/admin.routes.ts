@@ -51,18 +51,20 @@ router.get('/users', asyncHandler(async (_req, res) => {
     }
     const approvedCVs = allCVs.filter(c => c.status === 'APPROVED').length
 
-    const plan = (sub?.plan ?? 'EXPLORE') as keyof typeof PLAN_LIMITS
+    const plan = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
     const limits = PLAN_LIMITS[plan]
 
-    // Weekly usage — reset if week elapsed
+    // Weekly usage — count actual submitted apps created since Monday
     const now = new Date()
-    let weeklyUsed = sub?.weeklyApplicationsUsed ?? 0
-    if (sub?.weekStartedAt) {
-      const msPerWeek = 7 * 24 * 60 * 60 * 1000
-      if (now.getTime() - new Date(sub.weekStartedAt).getTime() >= msPerWeek) {
-        weeklyUsed = 0
-      }
-    }
+    const day = now.getDay()
+    const daysBack = day === 0 ? 6 : day - 1
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - daysBack)
+    weekStart.setHours(0, 0, 0, 0)
+    const weeklyUsed = allApps.filter(a =>
+      !['SAVED', 'RECRUITER_OUTREACH'].includes(a.status) &&
+      new Date(a.createdAt) >= weekStart
+    ).length
     const weeklyLimit     = limits.weeklyApplications === Infinity ? 9999 : limits.weeklyApplications
     const weeklyRemaining = Math.max(0, weeklyLimit - weeklyUsed)
 
