@@ -22,7 +22,7 @@ const PLAN_ORDER = ['STARTER', 'EXPLORE', 'LAUNCH', 'MOMENTUM']
 
 const PLAN_CONFIG: Record<string, { label: string; price: string; color: string; desc: string; features: string[] }> = {
   STARTER:  { label: 'Starter',  price: 'Free',    color: 'bg-slate-100 text-slate-600 border-slate-200',    desc: 'Guidance + free CV review', features: ['Career guidance & resources', '1 free CV review'] },
-  EXPLORE:  { label: 'Starter',  price: 'Free',    color: 'bg-slate-100 text-slate-600 border-slate-200',    desc: 'Guidance + free CV review', features: ['Career guidance & resources', '1 free CV review'] },
+  EXPLORE:  { label: 'Explore',  price: '£10/mo',  color: 'bg-teal-50 text-teal-700 border-teal-200',        desc: 'Build your profile',        features: ['1 CV review + 1 CV change', 'Application tracker (10 jobs/wk)', 'Application status tracking'] },
   LAUNCH:   { label: 'Launch',   price: '£20/mo',  color: 'bg-blue-50 text-blue-700 border-blue-200',        desc: 'Land your first interview', features: ['Unlimited CV changes', '50 applications/week', '1 guaranteed interview/month', 'LinkedIn optimisation'] },
   MOMENTUM: { label: 'Momentum', price: '£40/mo',  color: 'bg-violet-50 text-violet-700 border-violet-200',  desc: 'Multiple interviews/month', features: ['Unlimited CV changes', '200 applications/week', 'Multiple interviews/month', 'Cover letters + interview prep'] },
 }
@@ -77,12 +77,12 @@ function SubscriptionCard() {
     )
   }
 
-  const plan      = sub?.plan ?? 'EXPLORE'
+  const plan      = sub?.plan ?? 'STARTER'
   const status    = sub?.status ?? 'ACTIVE'
-  const isFree    = plan === 'STARTER' || plan === 'EXPLORE'
-  const cfg       = PLAN_CONFIG[plan] ?? PLAN_CONFIG.EXPLORE
-  const planIdx   = PLAN_ORDER.indexOf(plan === 'EXPLORE' ? 'STARTER' : plan)
-  const upgrades  = PLAN_ORDER.slice(planIdx + 1).filter(p => p !== 'STARTER' && p !== 'EXPLORE')
+  const isFree    = plan === 'STARTER'
+  const cfg       = PLAN_CONFIG[plan] ?? PLAN_CONFIG.STARTER
+  const planIdx   = PLAN_ORDER.indexOf(plan)
+  const upgrades  = PLAN_ORDER.slice(planIdx + 1).filter(p => p !== 'STARTER')
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">

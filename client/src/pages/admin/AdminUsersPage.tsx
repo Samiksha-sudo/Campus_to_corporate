@@ -45,17 +45,20 @@ interface AdminStats {
 }
 
 const PLAN_GRADIENT: Record<string, string> = {
-  EXPLORE:  'from-slate-500 to-slate-600',
+  STARTER:  'from-slate-400 to-slate-500',
+  EXPLORE:  'from-teal-500 to-cyan-600',
   LAUNCH:   'from-blue-500 to-indigo-600',
   MOMENTUM: 'from-violet-500 to-purple-600',
 }
 const PLAN_BADGE: Record<string, string> = {
-  EXPLORE:  'bg-slate-100 text-slate-600 ring-slate-200',
+  STARTER:  'bg-slate-100 text-slate-600 ring-slate-200',
+  EXPLORE:  'bg-teal-50 text-teal-700 ring-teal-200',
   LAUNCH:   'bg-blue-50 text-blue-700 ring-blue-200',
   MOMENTUM: 'bg-violet-50 text-violet-700 ring-violet-200',
 }
 const PLAN_LABEL: Record<string, string> = {
-  EXPLORE:  'Starter',
+  STARTER:  'Starter',
+  EXPLORE:  'Explore',
   LAUNCH:   'Launch',
   MOMENTUM: 'Momentum',
 }
@@ -253,7 +256,8 @@ function CustomerDetail({ u }: { u: AdminUser }) {
             <p className="text-sm text-white/70 truncate">{u.email}</p>
             <p className="text-xs text-white/50 mt-0.5">Joined {new Date(u.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
           </div>
-          <a href={`mailto:${u.email}`}
+          <a href={`https://mail.zoho.eu/zm/#compose?to=${encodeURIComponent(u.email)}`}
+            target="_blank" rel="noopener noreferrer"
             className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors px-3 py-1.5 rounded-lg">
             <Mail size={12} /> Email
           </a>
@@ -296,7 +300,7 @@ function CustomerDetail({ u }: { u: AdminUser }) {
             ))}
             {u.gmail && <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-2 py-1 truncate">{u.gmail.email}</p>}
 
-            {u.plan === 'EXPLORE' && (
+            {(u.plan === 'STARTER' || u.plan === 'EXPLORE') && (
               <div className="pt-2 border-t border-slate-100">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">Starter CV review done</span>
@@ -378,7 +382,7 @@ function CustomerDetail({ u }: { u: AdminUser }) {
           <div className="mt-auto pt-3 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Change plan</p>
             <div className="flex gap-1.5">
-              {['EXPLORE','LAUNCH','MOMENTUM'].map(plan => (
+              {['STARTER','EXPLORE','LAUNCH','MOMENTUM'].map(plan => (
                 <button key={plan} onClick={() => changePlan.mutate(plan)}
                   disabled={u.plan === plan || changePlan.isPending}
                   className={`flex-1 text-xs py-1.5 rounded-lg font-semibold transition-all ${
@@ -472,7 +476,7 @@ export default function AdminUsersPage() {
           </div>
 
           <div className="flex gap-1">
-            {(['ALL','EXPLORE','LAUNCH','MOMENTUM'] as const).map(p => (
+            {(['ALL','STARTER','EXPLORE','LAUNCH','MOMENTUM'] as const).map(p => (
               <button key={p} onClick={() => setPlan(p)}
                 className={`flex-1 text-[10px] font-semibold rounded-lg py-1 transition-all ${
                   planFilter === p

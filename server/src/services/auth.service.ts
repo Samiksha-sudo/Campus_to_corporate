@@ -58,7 +58,7 @@ export async function register(input: RegisterInput): Promise<{ user: typeof use
   await db.insert(subscriptions).values({
     id:     randomUUID(),
     userId,
-    plan:   'EXPLORE',
+    plan:   'STARTER',
     status: 'ACTIVE',
   })
 

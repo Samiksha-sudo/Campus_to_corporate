@@ -71,13 +71,13 @@ router.get('/users', asyncHandler(async (_req, res) => {
     if (!u.emailVerified)                                     needs.push('Email verification')
     if (!u.profileComplete)                                   needs.push('Profile setup')
     if (!gmail)                                               needs.push('Gmail sync')
-    if (plan === 'EXPLORE')                                   needs.push('Plan upgrade')
+    if (plan === 'STARTER' || plan === 'EXPLORE')              needs.push('Plan upgrade')
     if (allCVs.filter(c => c.status !== 'ARCHIVED').length === 0) needs.push('First CV')
     if (allCVs.some(c => c.status === 'IN_REVIEW'))          needs.push('CV in review')
     if (allCVs.some(c => c.status === 'REQUIRES_CHANGES'))    needs.push('CV needs changes')
     if (sub?.status === 'PAST_DUE')                           needs.push('Payment issue')
     if (sub?.status === 'TRIALING')                           needs.push('Trial → convert')
-    if (activeApps.length === 0 && plan !== 'EXPLORE')        needs.push('Start applying')
+    if (activeApps.length === 0 && plan !== 'STARTER' && plan !== 'EXPLORE') needs.push('Start applying')
 
     return {
       id:              u.id,
@@ -155,7 +155,7 @@ router.patch('/users/:id/role', asyncHandler(async (req, res) => {
 // PATCH /api/admin/users/:id/plan — manually set plan (for custom arrangements)
 router.patch('/users/:id/plan', asyncHandler(async (req, res) => {
   const { plan } = req.body as { plan: string }
-  const validPlans = ['EXPLORE','LAUNCH','MOMENTUM']
+  const validPlans = ['STARTER','EXPLORE','LAUNCH','MOMENTUM']
   if (!validPlans.includes(plan)) {
     res.status(400).json({ success: false, error: { code: 'INVALID_PLAN', message: 'Invalid plan' } })
     return

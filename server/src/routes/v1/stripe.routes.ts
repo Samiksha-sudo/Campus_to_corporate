@@ -17,7 +17,7 @@ const checkoutSchema = z.object({ plan: z.enum(['EXPLORE', 'LAUNCH', 'MOMENTUM']
 router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
   const [sub] = await db.select().from(subscriptions)
     .where(eq(subscriptions.userId, req.user!.id)).limit(1)
-  const plan   = (sub?.plan ?? 'EXPLORE') as keyof typeof PLAN_LIMITS
+  const plan   = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
   const limits = PLAN_LIMITS[plan]
   res.json({
     success: true,

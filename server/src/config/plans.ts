@@ -1,7 +1,14 @@
 export const PLAN_LIMITS = {
-  EXPLORE: {
+  STARTER: {
     cvChanges:          1,
     weeklyApplications: 0,
+    coverLetters:       false,
+    linkedIn:           false,
+    interviewGuarantee: false,
+  },
+  EXPLORE: {
+    cvChanges:          1,
+    weeklyApplications: 10,
     coverLetters:       false,
     linkedIn:           false,
     interviewGuarantee: false,

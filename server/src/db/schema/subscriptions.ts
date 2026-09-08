@@ -3,13 +3,13 @@ import {
 } from 'drizzle-orm/mysql-core'
 import { sql } from 'drizzle-orm'
 
-export const planEnum = mysqlEnum('plan', ['EXPLORE', 'LAUNCH', 'MOMENTUM'])
+export const planEnum = mysqlEnum('plan', ['STARTER', 'EXPLORE', 'LAUNCH', 'MOMENTUM'])
 export const subStatusEnum = mysqlEnum('status', ['ACTIVE', 'PAST_DUE', 'CANCELED', 'TRIALING', 'INCOMPLETE'])
 
 export const subscriptions = mysqlTable('subscriptions', {
   id:                   varchar('id', { length: 36 }).primaryKey(),
   userId:               varchar('user_id', { length: 36 }).notNull(),
-  plan:                 planEnum.notNull().default('EXPLORE'),
+  plan:                 planEnum.notNull().default('STARTER'),
   status:               subStatusEnum.notNull().default('ACTIVE'),
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 100 }),
   stripePriceId:        varchar('stripe_price_id', { length: 100 }),

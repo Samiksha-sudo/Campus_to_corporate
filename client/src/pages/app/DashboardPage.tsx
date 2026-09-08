@@ -14,20 +14,20 @@ interface SubData     { plan: string; status: string; weeklyApplicationsUsed: nu
 
 const PLAN_LABEL: Record<string, string> = {
   STARTER:  'Starter · Free',
-  EXPLORE:  'Starter · Free',
+  EXPLORE:  'Explore · £10/mo',
   LAUNCH:   'Launch · £20/mo',
   MOMENTUM: 'Momentum · £40/mo',
 }
 
 const PLAN_COLOR: Record<string, string> = {
   STARTER:  'bg-slate-100 text-slate-600',
-  EXPLORE:  'bg-slate-100 text-slate-600',
+  EXPLORE:  'bg-teal-50 text-teal-700',
   LAUNCH:   'bg-blue-50 text-blue-700',
   MOMENTUM: 'bg-violet-50 text-violet-700',
 }
 
 const WEEKLY_LIMIT: Record<string, number> = {
-  STARTER: 0, EXPLORE: 0, LAUNCH: 50, MOMENTUM: 200,
+  STARTER: 0, EXPLORE: 10, LAUNCH: 50, MOMENTUM: 200,
 }
 
 function StatCard({ icon: Icon, label, value, sub, href, color = 'bg-brand-50 text-brand-600' }: {
@@ -52,7 +52,7 @@ function PlanBanner({ plan, status, weeklyUsed, trialEnd, cvReviewDone }: SubDat
   const limit = WEEKLY_LIMIT[plan] ?? 0
   const pct   = limit > 0 ? Math.min(100, Math.round((weeklyUsed / limit) * 100)) : 0
 
-  if (plan === 'EXPLORE') {
+  if (plan === 'STARTER') {
     return (
       <div className="space-y-3">
         <div className="bg-gradient-to-r from-brand-600 to-violet-600 rounded-2xl p-5 text-white">
@@ -242,7 +242,7 @@ export default function DashboardPage() {
       )}
 
       {/* Empty state */}
-      {apps.length === 0 && cvs.length > 0 && sub.plan !== 'EXPLORE' && (
+      {apps.length === 0 && cvs.length > 0 && sub.plan !== 'STARTER' && sub.plan !== 'EXPLORE' && (
         <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
           <Briefcase size={32} className="mx-auto text-slate-300 mb-3" />
           <p className="text-slate-500 font-medium">No applications yet</p>
