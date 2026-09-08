@@ -93,7 +93,7 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
       const sub = event.data.object as Stripe.Subscription
       const userId = sub.metadata?.userId
       if (userId) {
-        await db.update(subscriptions).set({ status: 'CANCELED', plan: 'EXPLORE' }).where(eq(subscriptions.userId, userId))
+        await db.update(subscriptions).set({ status: 'CANCELED', plan: 'STARTER' }).where(eq(subscriptions.userId, userId))
       }
       break
     }

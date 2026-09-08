@@ -30,13 +30,18 @@ export default function PaymentSuccessPage() {
   const cfg  = PLAN_CONFIG[plan] ?? PLAN_CONFIG.LAUNCH
 
   useEffect(() => {
-    // Sync plan from Stripe into DB (handles case where webhook didn't fire on localhost)
-    api.post('/stripe/sync-plan').then(() => {
-      qc.invalidateQueries({ queryKey: ['subscription'] })
-      qc.invalidateQueries({ queryKey: ['admin-users'] })
-    }).catch(() => {
-      qc.invalidateQueries({ queryKey: ['subscription'] })
-    })
+    // Retry sync-plan up to 3 times — Stripe may not have created the subscription immediately
+    const sync = async (attempt = 0) => {
+      try {
+        await api.post('/stripe/sync-plan')
+        qc.invalidateQueries({ queryKey: ['subscription'] })
+        qc.invalidateQueries({ queryKey: ['admin-users'] })
+      } catch {
+        if (attempt < 2) setTimeout(() => sync(attempt + 1), 2000)
+        else qc.invalidateQueries({ queryKey: ['subscription'] })
+      }
+    }
+    sync()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
