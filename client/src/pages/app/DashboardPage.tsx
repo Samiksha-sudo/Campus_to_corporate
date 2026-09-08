@@ -152,12 +152,13 @@ export default function DashboardPage() {
 
   const cvs  = cvsData?.cvs  ?? []
   const apps = appsData?.applications ?? []
-  const sub  = stripeData ?? { plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null, cvReviewDone: false }
+  const sub  = stripeData ?? { plan: 'STARTER', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null, cvReviewDone: false }
 
   const primaryCV       = cvs.find(c => c.isPrimary)
   const approvedCVs     = cvs.filter(c => c.status === 'APPROVED').length
   const activeApps      = apps.filter(a => !['REJECTED','WITHDRAWN'].includes(a.status)).length
-  const interviews      = apps.filter(a => ['SCREENING','ASSESSMENT','ASSESSMENT_SUBMITTED','HIRING_MANAGER_INTERVIEW','TECHNICAL_INTERVIEW','SYSTEM_DESIGN_INTERVIEW','CODING_INTERVIEW','SECOND_ROUND','THIRD_ROUND','FINAL_ROUND'].includes(a.status)).length
+  const INTERVIEW_STATUSES = ['SCREENING','ASSESSMENT','ASSESSMENT_SUBMITTED','HIRING_MANAGER_INTERVIEW','TECHNICAL_INTERVIEW','SYSTEM_DESIGN_INTERVIEW','CODING_INTERVIEW','SECOND_ROUND','THIRD_ROUND','FINAL_ROUND']
+  const interviews = apps.filter(a => INTERVIEW_STATUSES.includes(a.status)).length
 
   const hour  = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'

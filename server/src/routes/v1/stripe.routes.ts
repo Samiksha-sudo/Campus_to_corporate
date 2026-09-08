@@ -1,12 +1,13 @@
 import { Router }        from 'express'
 import { z }             from 'zod'
-import { eq }            from 'drizzle-orm'
+import { eq, and, gte, count, sql } from 'drizzle-orm'
 import { authenticate }  from '../../middleware/auth.js'
 import { validate }      from '../../middleware/validate.js'
 import { asyncHandler }  from '../../utils/asyncHandler.js'
 import * as stripe       from '../../services/stripe.service.js'
 import { db }            from '../../config/database.js'
 import { subscriptions } from '../../db/schema/subscriptions.js'
+import { applications }  from '../../db/schema/applications.js'
 import { PLAN_LIMITS }   from '../../config/plans.js'
 
 const router = Router()
@@ -19,12 +20,30 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
     .where(eq(subscriptions.userId, req.user!.id)).limit(1)
   const plan   = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
   const limits = PLAN_LIMITS[plan]
+
+  // Calculate this week's start (Monday 00:00:00)
+  const now = new Date()
+  const day = now.getDay() // 0=Sun, 1=Mon, ...
+  const daysBack = day === 0 ? 6 : day - 1
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - daysBack)
+  weekStart.setHours(0, 0, 0, 0)
+
+  // Count actual submitted applications this week (exclude just-saved or recruiter outreach)
+  const [weekRow] = await db.select({ total: count() }).from(applications)
+    .where(and(
+      eq(applications.userId, req.user!.id),
+      gte(applications.createdAt, weekStart),
+      sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
+    ))
+  const weeklyUsed = weekRow?.total ?? 0
+
   res.json({
     success: true,
     data: {
       plan:                   plan,
       status:                 sub?.status ?? 'ACTIVE',
-      weeklyApplicationsUsed: sub?.weeklyApplicationsUsed ?? 0,
+      weeklyApplicationsUsed: weeklyUsed,
       weeklyApplicationsLimit:limits.weeklyApplications,
       trialEnd:               sub?.trialEnd ?? null,
       currentPeriodEnd:       sub?.currentPeriodEnd ?? null,

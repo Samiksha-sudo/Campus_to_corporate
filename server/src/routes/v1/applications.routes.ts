@@ -69,7 +69,7 @@ router.post('/', asyncHandler(async (req, res) => {
   // Check weekly application limit
   const [sub] = await db.select().from(subscriptions)
     .where(eq(subscriptions.userId, userId)).limit(1)
-  const plan = (sub?.plan ?? 'EXPLORE') as keyof typeof PLAN_LIMITS
+  const plan = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
   const limits = PLAN_LIMITS[plan]
 
   if (limits.weeklyApplications === 0) {
