@@ -241,7 +241,7 @@ export async function syncEmails(userId: string): Promise<SyncResult> {
     '-subject:"unsubscribe"',
   ].join(' ')
 
-  // Paginate Gmail results — fetch up to 500 messages across multiple pages
+  // Fetch up to 200 messages (2 pages)
   const messages: { id?: string | null; threadId?: string | null }[] = []
   let pageToken: string | undefined
   do {
@@ -251,16 +251,33 @@ export async function syncEmails(userId: string): Promise<SyncResult> {
     })
     messages.push(...(listRes.data.messages ?? []))
     pageToken = listRes.data.nextPageToken ?? undefined
-  } while (pageToken && messages.length < 500)
+  } while (pageToken && messages.length < 200)
+
+  // Fetch message details in parallel batches of 20 (instead of one-by-one)
+  const BATCH = 20
+  const fetched: Array<{ subject: string; from: string; snippet: string }> = []
+  for (let i = 0; i < messages.length; i += BATCH) {
+    const batch = messages.slice(i, i + BATCH)
+    const results = await Promise.all(
+      batch.map(msg =>
+        gmailClient.users.messages.get({ userId: 'me', id: msg.id!, format: 'metadata', metadataHeaders: ['Subject', 'From', 'Date'] })
+          .then(full => {
+            const headers = full.data.payload?.headers ?? []
+            return {
+              subject: headers.find(h => h.name === 'Subject')?.value ?? '',
+              from:    headers.find(h => h.name === 'From')?.value    ?? '',
+              snippet: full.data.snippet ?? '',
+            }
+          })
+          .catch(() => null)
+      )
+    )
+    fetched.push(...results.filter((r): r is NonNullable<typeof r> => r !== null))
+  }
 
   const result: SyncResult = { matched: 0, updated: 0, emails: [] }
 
-  for (const msg of messages) {
-    const full    = await gmailClient.users.messages.get({ userId: 'me', id: msg.id!, format: 'metadata', metadataHeaders: ['Subject', 'From', 'Date'] })
-    const headers = full.data.payload?.headers ?? []
-    const subject = headers.find(h => h.name === 'Subject')?.value ?? ''
-    const from    = headers.find(h => h.name === 'From')?.value    ?? ''
-    const snippet = full.data.snippet ?? ''
+  for (const { subject, from, snippet } of fetched) {
     const body    = `${subject} ${snippet}`
 
     // Detect status — check subject+snippet first, then subject alone as fallback
