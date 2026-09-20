@@ -24,24 +24,25 @@ export default function PaymentSuccessPage() {
   const [params]   = useSearchParams()
   const navigate   = useNavigate()
   const qc         = useQueryClient()
-  const [count, setCount] = useState(5)
+  const [count, setCount] = useState(16)
 
   const plan = (params.get('plan') ?? 'LAUNCH').toUpperCase()
   const cfg  = PLAN_CONFIG[plan] ?? PLAN_CONFIG.LAUNCH
 
   useEffect(() => {
-    // Retry sync-plan up to 3 times — Stripe may not have created the subscription immediately
+    // Retry sync-plan up to 5 times — Stripe may not have created the subscription immediately
     const sync = async (attempt = 0) => {
       try {
         await api.post('/stripe/sync-plan')
         qc.invalidateQueries({ queryKey: ['subscription'] })
         qc.invalidateQueries({ queryKey: ['admin-users'] })
       } catch {
-        if (attempt < 2) setTimeout(() => sync(attempt + 1), 2000)
+        if (attempt < 5) setTimeout(() => sync(attempt + 1), 2500)
         else qc.invalidateQueries({ queryKey: ['subscription'] })
       }
     }
-    sync()
+    // Wait 1.5s before first attempt to give Stripe time to create the subscription
+    setTimeout(() => sync(), 1500)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

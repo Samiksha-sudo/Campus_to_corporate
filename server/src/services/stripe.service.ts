@@ -1,5 +1,6 @@
 import Stripe      from 'stripe'
 import { eq }      from 'drizzle-orm'
+import { randomUUID } from 'crypto'
 import { db }      from '../config/database.js'
 import { users }   from '../db/schema/users.js'
 import { subscriptions } from '../db/schema/subscriptions.js'
@@ -77,7 +78,7 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
       if (!userId) break
       const plan = (sub.metadata?.plan ?? 'EXPLORE') as 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
       const status = mapStatus(sub.status)
-      await db.update(subscriptions).set({
+      const payload = {
         plan,
         status,
         stripeSubscriptionId: sub.id,
@@ -86,7 +87,13 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
         currentPeriodEnd:     new Date(sub.current_period_end * 1000),
         cancelAtPeriodEnd:    sub.cancel_at_period_end ? 1 : 0,
         trialEnd:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-      }).where(eq(subscriptions.userId, userId))
+      }
+      const [existing] = await db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
+      if (existing) {
+        await db.update(subscriptions).set(payload).where(eq(subscriptions.userId, userId))
+      } else {
+        await db.insert(subscriptions).values({ id: randomUUID(), userId, ...payload } as never)
+      }
       break
     }
     case 'customer.subscription.deleted': {
@@ -108,7 +115,7 @@ export async function syncPlan(userId: string): Promise<void> {
 
   const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, limit: 1, status: 'all' })
   const sub  = subs.data[0]
-  if (!sub) return
+  if (!sub) throw new AppError(503, 'Stripe subscription not ready yet', 'SUB_NOT_READY')
 
   const plan   = (sub.metadata?.plan ?? 'EXPLORE') as 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
   const status = mapStatus(sub.status)
