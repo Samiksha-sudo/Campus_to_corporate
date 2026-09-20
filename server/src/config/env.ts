@@ -25,7 +25,7 @@ const schema = z.object({
   R2_PUBLIC_URL:       z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM:     z.string().default('Campus to Corporate <noreply@campus-to-corporate.co.uk>'),
+  EMAIL_FROM:     z.string().default('Campus to Corporate <success@campustocorporate.co.uk>'),
 
   STRIPE_SECRET_KEY:      z.string().optional(),
   STRIPE_WEBHOOK_SECRET:  z.string().optional(),

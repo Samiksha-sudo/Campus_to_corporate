@@ -141,7 +141,7 @@ export default function PublicLayout() {
             {[
               { heading: 'Platform',  links: ['How It Works', 'Pricing', 'Services'] },
               { heading: 'Resources', links: ['Blog', 'Career Guides', 'FAQ'] },
-              { heading: 'Company',   links: ['About', 'Contact'] },
+              { heading: 'Company',   links: ['About'] },
               { heading: 'Legal',     links: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'] },
             ].map(({ heading, links }) => (
               <div key={heading}>
@@ -160,7 +160,12 @@ export default function PublicLayout() {
             <p className="text-xs text-slate-500">
               © {new Date().getFullYear()} Campus to Corporate Ltd. Campus to Corporate is not a recruitment agency. We do not guarantee interviews or offers.
             </p>
-            <p className="text-xs text-slate-600">UK-focused career platform</p>
+            <div className="flex items-center gap-4">
+              <a href="mailto:success@campustocorporate.co.uk" className="text-xs text-slate-400 hover:text-white transition-colors">
+                success@campustocorporate.co.uk
+              </a>
+              <span className="text-xs text-slate-600">UK-focused career platform</span>
+            </div>
           </div>
         </div>
       </footer>
