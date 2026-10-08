@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, RefreshCw } from 'lucide-react'
 import api from '@/services/api'
 
@@ -14,6 +14,41 @@ const PLAN_STYLE: Record<string, string> = {
   EXPLORE:  'bg-slate-200 text-slate-700',
   LAUNCH:   'bg-blue-100 text-blue-700',
   MOMENTUM: 'bg-violet-100 text-violet-700',
+}
+
+function UsageSlider({ c }: { c: Customer }) {
+  const qc = useQueryClient()
+  const max = c.weeklyLimit >= 9999 ? 200 : c.weeklyLimit
+  const [val, setVal] = useState(c.thisWeek)
+  useEffect(() => setVal(c.thisWeek), [c.thisWeek])
+
+  const save = useMutation({
+    mutationFn: async (count: number) => (await api.patch(`/admin/users/${c.id}/weekly`, { count })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin'] }),
+    onError: () => setVal(c.thisWeek),
+  })
+
+  if (max === 0) return <p className="text-xs text-slate-400">No applications on this plan</p>
+  const pct = Math.min(100, Math.round((val / max) * 100))
+  return (
+    <div className="w-48">
+      <div className="flex items-baseline justify-between mb-1">
+        <p className="font-semibold text-slate-800">{val} <span className="text-slate-400 font-normal">/ {c.weeklyLimit >= 9999 ? '∞' : c.weeklyLimit}</span></p>
+        {save.isPending && <span className="text-[10px] text-slate-400">saving…</span>}
+        {save.isError && <span className="text-[10px] text-red-500">failed</span>}
+      </div>
+      <input
+        type="range" min={0} max={max} step={1} value={Math.min(val, max)}
+        onChange={e => setVal(Number(e.target.value))}
+        onMouseUp={() => val !== c.thisWeek && save.mutate(val)}
+        onTouchEnd={() => val !== c.thisWeek && save.mutate(val)}
+        onKeyUp={() => val !== c.thisWeek && save.mutate(val)}
+        aria-label={`Applications completed this week for ${c.name}`}
+        className="w-full accent-emerald-600 cursor-pointer"
+        style={{ background: `linear-gradient(to right,#10b981 ${pct}%,#e2e8f0 ${pct}%)`, height: 6, borderRadius: 9999, appearance: 'none' }}
+      />
+    </div>
+  )
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' })
@@ -72,14 +107,13 @@ export default function AdminWeeklyPage() {
             <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">This week</th>
+              <th className="px-4 py-3">This week (drag to set)</th>
               <th className="px-4 py-3">History (oldest → newest)</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Loading…</td></tr>}
             {customers.map(c => {
-              const pct = c.weeklyLimit > 0 ? Math.min(100, Math.round((c.thisWeek / c.weeklyLimit) * 100)) : 0
               return (
                 <tr key={c.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3">
@@ -89,11 +123,8 @@ export default function AdminWeeklyPage() {
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${PLAN_STYLE[c.plan] ?? PLAN_STYLE.STARTER}`}>{c.plan}</span>
                   </td>
-                  <td className="px-4 py-3 w-44">
-                    <p className="font-semibold text-slate-800">{c.thisWeek} <span className="text-slate-400 font-normal">/ {c.weeklyLimit >= 9999 ? '∞' : c.weeklyLimit}</span></p>
-                    <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                      <div className={`h-full ${pct >= 100 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
-                    </div>
+                  <td className="px-4 py-3">
+                    <UsageSlider c={c} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-end gap-1 h-10">

@@ -20,3 +20,20 @@ export function ukWeekStart(now = new Date(), weeksBack = 0): Date {
   const guess = new Date(wallMonday - offsetMs(now))
   return new Date(wallMonday - offsetMs(guess))                // re-resolve offset across DST changes
 }
+
+/**
+ * Weekly used count. An admin can set a manual count for the current week
+ * (stored in subscriptions.weeklyApplicationsUsed with weekStartedAt = when it was set);
+ * it only applies while it falls inside the current UK week, so it clears itself on Sunday midnight.
+ */
+export function effectiveWeeklyUsed(
+  sub: { weeklyApplicationsUsed?: number | null; weekStartedAt?: Date | string | null } | undefined,
+  derived: number,
+  now = new Date(),
+): number {
+  if (sub?.weekStartedAt != null && sub.weeklyApplicationsUsed != null
+      && new Date(sub.weekStartedAt).getTime() >= ukWeekStart(now).getTime()) {
+    return sub.weeklyApplicationsUsed
+  }
+  return derived
+}

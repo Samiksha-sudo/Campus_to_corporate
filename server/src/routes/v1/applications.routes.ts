@@ -9,7 +9,7 @@ import { applications }   from '../../db/schema/applications.js'
 import { subscriptions }  from '../../db/schema/subscriptions.js'
 import { PLAN_LIMITS }    from '../../config/plans.js'
 import { AppError }       from '../../utils/errors.js'
-import { ukWeekStart }    from '../../utils/week.js'
+import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
 
 const router = Router()
 router.use(authenticate)
@@ -84,7 +84,7 @@ router.post('/', asyncHandler(async (req, res) => {
       gte(applications.createdAt, ukWeekStart()),
       sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
     ))
-  const weeklyUsed = weekRow?.total ?? 0
+  const weeklyUsed = effectiveWeeklyUsed(sub, weekRow?.total ?? 0)
 
   if (weeklyUsed >= limits.weeklyApplications) {
     throw new AppError(403, `Weekly limit reached (${limits.weeklyApplications} applications). Resets Monday 00:00.`)

@@ -10,7 +10,7 @@ import { gmailConnections } from '../../db/schema/gmail.js'
 import { applications } from '../../db/schema/applications.js'
 import { cvs }          from '../../db/schema/cvs.js'
 import { PLAN_LIMITS }  from '../../config/plans.js'
-import { ukWeekStart }  from '../../utils/week.js'
+import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
 
 const router = Router()
 
@@ -57,10 +57,10 @@ router.get('/users', asyncHandler(async (_req, res) => {
 
     // Weekly usage — count actual submitted apps created since Monday
     const weekStart = ukWeekStart()
-    const weeklyUsed = allApps.filter(a =>
+    const weeklyUsed = effectiveWeeklyUsed(sub, allApps.filter(a =>
       !['SAVED', 'RECRUITER_OUTREACH'].includes(a.status) &&
       new Date(a.createdAt) >= weekStart
-    ).length
+    ).length)
     const weeklyLimit     = limits.weeklyApplications === Infinity ? 9999 : limits.weeklyApplications
     const weeklyRemaining = Math.max(0, weeklyLimit - weeklyUsed)
 
@@ -155,6 +155,7 @@ router.get('/weekly', asyncHandler(async (req, res) => {
     .from(applications).where(gte(applications.createdAt, rangeStart))
 
   const planByUser = new Map(subs.map(s => [s.userId, s.plan]))
+  const subByUser  = new Map(subs.map(s => [s.userId, s]))
   const buckets = new Map<string, number[]>()
   for (const a of apps) {
     if (['SAVED', 'RECRUITER_OUTREACH'].includes(a.status)) continue
@@ -174,7 +175,7 @@ router.get('/weekly', asyncHandler(async (req, res) => {
     return {
       id: u.id, name: `${u.firstName} ${u.lastName}`, email: u.email, plan,
       weeklyLimit: limit === Infinity ? 9999 : limit,
-      thisWeek: perWeek[weeks - 1],
+      thisWeek: effectiveWeeklyUsed(subByUser.get(u.id), perWeek[weeks - 1]),
       perWeek,
     }
   })
@@ -184,6 +185,23 @@ router.get('/weekly', asyncHandler(async (req, res) => {
     resetsAt: ukWeekStart(new Date(Date.now() + 7 * 864e5)).toISOString(),
     customers,
   } })
+}))
+
+// PATCH /api/admin/users/:id/weekly — set this week's completed-application count (slider). Clears itself next week.
+router.patch('/users/:id/weekly', asyncHandler(async (req, res) => {
+  const userId = String(req.params.id)
+  const count = Number((req.body as { count?: unknown }).count)
+  if (!Number.isInteger(count) || count < 0 || count > 1000) {
+    res.status(400).json({ success: false, error: { code: 'INVALID_COUNT', message: 'count must be a whole number between 0 and 1000' } })
+    return
+  }
+  const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
+  if (!sub) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Subscription not found' } })
+    return
+  }
+  await db.update(subscriptions).set({ weeklyApplicationsUsed: count, weekStartedAt: new Date() }).where(eq(subscriptions.userId, userId))
+  res.json({ success: true, data: { thisWeek: count } })
 }))
 
 // PATCH /api/admin/users/:id/role — change user role

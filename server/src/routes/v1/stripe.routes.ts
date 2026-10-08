@@ -9,7 +9,7 @@ import { db }            from '../../config/database.js'
 import { subscriptions } from '../../db/schema/subscriptions.js'
 import { applications }  from '../../db/schema/applications.js'
 import { PLAN_LIMITS }   from '../../config/plans.js'
-import { ukWeekStart }   from '../../utils/week.js'
+import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
 
 const router = Router()
 
@@ -31,7 +31,7 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
       gte(applications.createdAt, weekStart),
       sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
     ))
-  const weeklyUsed = weekRow?.total ?? 0
+  const weeklyUsed = effectiveWeeklyUsed(sub, weekRow?.total ?? 0)
 
   res.json({
     success: true,
