@@ -41,6 +41,7 @@ export const ROUTES = {
   ADMIN_ANALYTICS:'/admin/analytics',
   ADMIN_SETTINGS: '/admin/settings',
   ADMIN_TASKS:    '/admin/tasks',
+  ADMIN_WEEKLY:   '/admin/weekly',
 } as const
 
 export type RouteKey = keyof typeof ROUTES

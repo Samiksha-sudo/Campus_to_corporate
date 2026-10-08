@@ -1,5 +1,5 @@
 import { Router }        from 'express'
-import { eq, and, desc }  from 'drizzle-orm'
+import { eq, and, desc, gte, count, sql } from 'drizzle-orm'
 import { randomUUID }     from 'crypto'
 import { z }              from 'zod'
 import { authenticate }   from '../../middleware/auth.js'
@@ -9,6 +9,7 @@ import { applications }   from '../../db/schema/applications.js'
 import { subscriptions }  from '../../db/schema/subscriptions.js'
 import { PLAN_LIMITS }    from '../../config/plans.js'
 import { AppError }       from '../../utils/errors.js'
+import { ukWeekStart }    from '../../utils/week.js'
 
 const router = Router()
 router.use(authenticate)
@@ -76,20 +77,17 @@ router.post('/', asyncHandler(async (req, res) => {
     throw new AppError(403, 'Upgrade your plan to submit applications.')
   }
 
-  // Reset weekly counter if week has rolled over
-  const now = new Date()
-  let weeklyUsed = sub?.weeklyApplicationsUsed ?? 0
-  if (sub?.weekStartedAt) {
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000
-    if (now.getTime() - new Date(sub.weekStartedAt).getTime() >= msPerWeek) {
-      weeklyUsed = 0
-      await db.update(subscriptions).set({ weeklyApplicationsUsed: 0, weekStartedAt: now })
-        .where(eq(subscriptions.userId, userId))
-    }
-  }
+  // Weekly usage = real submitted applications since Monday 00:00 UK (resets Sunday midnight)
+  const [weekRow] = await db.select({ total: count() }).from(applications)
+    .where(and(
+      eq(applications.userId, userId),
+      gte(applications.createdAt, ukWeekStart()),
+      sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
+    ))
+  const weeklyUsed = weekRow?.total ?? 0
 
   if (weeklyUsed >= limits.weeklyApplications) {
-    throw new AppError(403, `Weekly limit reached (${limits.weeklyApplications} applications). Resets next week.`)
+    throw new AppError(403, `Weekly limit reached (${limits.weeklyApplications} applications). Resets Monday 00:00.`)
   }
 
   const id = randomUUID()
@@ -108,12 +106,6 @@ router.post('/', asyncHandler(async (req, res) => {
     cvId:           body.cvId ?? null,
     status:         'SAVED',
   })
-
-  // Increment weekly counter (only when status becomes APPLIED later, but track saves too)
-  if (!sub?.weekStartedAt) {
-    await db.update(subscriptions).set({ weekStartedAt: now })
-      .where(eq(subscriptions.userId, userId))
-  }
 
   const [created] = await db.select().from(applications).where(eq(applications.id, id)).limit(1)
   res.status(201).json({ success: true, data: { application: created } })
@@ -138,14 +130,6 @@ router.patch('/:id', asyncHandler(async (req, res) => {
 
   if (body.status === 'APPLIED' && app.status !== 'APPLIED') {
     setData.appliedAt = new Date()
-    // Count against weekly limit
-    const [sub] = await db.select().from(subscriptions)
-      .where(eq(subscriptions.userId, userId)).limit(1)
-    if (sub) {
-      await db.update(subscriptions)
-        .set({ weeklyApplicationsUsed: (sub.weeklyApplicationsUsed ?? 0) + 1 })
-        .where(eq(subscriptions.userId, userId))
-    }
   }
 
   await db.update(applications).set(setData as never).where(eq(applications.id, req.params.id))

@@ -36,6 +36,7 @@ export async function createCheckoutSession(userId: string, plan: string): Promi
 
   const session = await stripe.checkout.sessions.create({
     customer:             customerId,
+    client_reference_id:  userId,
     mode:                 'subscription',
     payment_method_types: ['card'],
     line_items:           [{ price: priceId, quantity: 1 }],
@@ -59,6 +60,51 @@ export async function createBillingPortal(userId: string): Promise<string> {
   return session.url
 }
 
+type PaidPlan = 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
+const PLAN_RANK: Record<PaidPlan, number> = { EXPLORE: 1, LAUNCH: 2, MOMENTUM: 3 }
+// Fallback when price IDs are not configured: monthly price in pence
+const AMOUNT_TO_PLAN: Record<number, PaidPlan> = { 4000: 'MOMENTUM', 2000: 'LAUNCH' }
+
+// Work out which plan a Stripe subscription is for. The price actually paid is the
+// source of truth; metadata is only a fallback (it can be missing or stale).
+function resolvePlan(sub: Stripe.Subscription): PaidPlan {
+  const item = sub.items.data[0]
+  const priceId = item?.price.id
+  const byPrice = (Object.keys(PRICE_MAP) as PaidPlan[]).find(k => PRICE_MAP[k] && PRICE_MAP[k] === priceId)
+  if (byPrice) return byPrice
+  const byAmount = item?.price.unit_amount != null ? AMOUNT_TO_PLAN[item.price.unit_amount] : undefined
+  if (byAmount) return byAmount
+  const meta = sub.metadata?.plan as PaidPlan | undefined
+  if (meta && meta in PLAN_RANK) return meta
+  return 'EXPLORE'
+}
+
+async function applySubscription(userId: string, sub: Stripe.Subscription): Promise<void> {
+  const payload = {
+    plan:                 resolvePlan(sub),
+    status:               mapStatus(sub.status),
+    stripeSubscriptionId: sub.id,
+    stripePriceId:        sub.items.data[0]?.price.id,
+    currentPeriodStart:   new Date(sub.current_period_start * 1000),
+    currentPeriodEnd:     new Date(sub.current_period_end   * 1000),
+    cancelAtPeriodEnd:    sub.cancel_at_period_end ? 1 : 0,
+    trialEnd:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+  }
+  const [existing] = await db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
+  if (existing) {
+    await db.update(subscriptions).set(payload).where(eq(subscriptions.userId, userId))
+  } else {
+    await db.insert(subscriptions).values({ id: randomUUID(), userId, ...payload } as never)
+  }
+}
+
+async function userIdForSubscription(sub: Stripe.Subscription): Promise<string | undefined> {
+  if (sub.metadata?.userId) return sub.metadata.userId
+  const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.stripeCustomerId, customerId)).limit(1)
+  return u?.id
+}
+
 export async function handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
   if (!env.STRIPE_WEBHOOK_SECRET) return
   const stripe = getStripe()
@@ -71,76 +117,66 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
   }
 
   switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const userId = session.client_reference_id ?? session.metadata?.userId
+      if (session.mode === 'subscription' && userId) {
+        await syncPlan(userId).catch(() => undefined)
+      } else if (session.mode === 'subscription' && session.customer) {
+        const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id
+        const [u] = await db.select({ id: users.id }).from(users).where(eq(users.stripeCustomerId, customerId)).limit(1)
+        if (u) await syncPlan(u.id).catch(() => undefined)
+      }
+      break
+    }
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
       const sub = event.data.object as Stripe.Subscription
-      const userId = sub.metadata?.userId
+      const userId = await userIdForSubscription(sub)
       if (!userId) break
-      const plan = (sub.metadata?.plan ?? 'EXPLORE') as 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
-      const status = mapStatus(sub.status)
-      const payload = {
-        plan,
-        status,
-        stripeSubscriptionId: sub.id,
-        stripePriceId:        sub.items.data[0]?.price.id,
-        currentPeriodStart:   new Date(sub.current_period_start * 1000),
-        currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-        cancelAtPeriodEnd:    sub.cancel_at_period_end ? 1 : 0,
-        trialEnd:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-      }
-      const [existing] = await db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
-      if (existing) {
-        await db.update(subscriptions).set(payload).where(eq(subscriptions.userId, userId))
-      } else {
-        await db.insert(subscriptions).values({ id: randomUUID(), userId, ...payload } as never)
-      }
+      // Sync from the full set of subs so an old/cancelled sub event can't downgrade a newer one
+      await syncPlan(userId).catch(async () => { await applySubscription(userId, sub) })
       break
     }
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
-      const userId = sub.metadata?.userId
-      if (userId) {
+      const userId = await userIdForSubscription(sub)
+      if (!userId) break
+      // Only reset if no other live subscription remains (e.g. after an upgrade)
+      await syncPlan(userId).catch(async () => {
         await db.update(subscriptions).set({ status: 'CANCELED', plan: 'STARTER' }).where(eq(subscriptions.userId, userId))
-      }
+      })
       break
     }
   }
 }
 
-// Sync the user's Stripe subscription into the DB — called after checkout when webhook can't reach localhost
+const LIVE_STATUSES: Stripe.Subscription.Status[] = ['active', 'trialing', 'past_due']
+
+// Sync the user's Stripe subscriptions into the DB — called after checkout and from webhooks.
+// Picks the highest-tier live subscription, so paying £40 always lands on Momentum.
 export async function syncPlan(userId: string): Promise<void> {
   const stripe = getStripe()
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
   if (!user?.stripeCustomerId) return
 
-  const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, limit: 1, status: 'all' })
-  const sub  = subs.data[0]
-  if (!sub) throw new AppError(503, 'Stripe subscription not ready yet', 'SUB_NOT_READY')
+  const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, limit: 20, status: 'all' })
+  if (subs.data.length === 0) throw new AppError(503, 'Stripe subscription not ready yet', 'SUB_NOT_READY')
 
-  const plan   = (sub.metadata?.plan ?? 'EXPLORE') as 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
-  const status = mapStatus(sub.status)
+  const live = subs.data.filter(s => LIVE_STATUSES.includes(s.status))
+  if (live.length > 0) {
+    live.sort((a, b) => PLAN_RANK[resolvePlan(b)] - PLAN_RANK[resolvePlan(a)] || b.created - a.created)
+    await applySubscription(userId, live[0])
+    return
+  }
 
-  const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
+  // Nothing live: a just-created checkout may still be 'incomplete'; otherwise reset to STARTER
+  const incomplete = subs.data.find(s => s.status === 'incomplete')
+  if (incomplete) throw new AppError(503, 'Stripe subscription not ready yet', 'SUB_NOT_READY')
+
+  const [existing] = await db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
   if (existing) {
-    await db.update(subscriptions).set({
-      plan, status,
-      stripeSubscriptionId: sub.id,
-      stripePriceId:        sub.items.data[0]?.price.id,
-      currentPeriodStart:   new Date(sub.current_period_start * 1000),
-      currentPeriodEnd:     new Date(sub.current_period_end   * 1000),
-      cancelAtPeriodEnd:    sub.cancel_at_period_end ? 1 : 0,
-      trialEnd:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-    }).where(eq(subscriptions.userId, userId))
-  } else {
-    await db.insert(subscriptions).values({
-      userId, plan, status,
-      stripeSubscriptionId: sub.id,
-      stripePriceId:        sub.items.data[0]?.price.id,
-      currentPeriodStart:   new Date(sub.current_period_start * 1000),
-      currentPeriodEnd:     new Date(sub.current_period_end   * 1000),
-      cancelAtPeriodEnd:    sub.cancel_at_period_end ? 1 : 0,
-      trialEnd:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-    } as never)
+    await db.update(subscriptions).set({ status: 'CANCELED', plan: 'STARTER' }).where(eq(subscriptions.userId, userId))
   }
 }
 

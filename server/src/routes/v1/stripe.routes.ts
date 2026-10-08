@@ -9,6 +9,7 @@ import { db }            from '../../config/database.js'
 import { subscriptions } from '../../db/schema/subscriptions.js'
 import { applications }  from '../../db/schema/applications.js'
 import { PLAN_LIMITS }   from '../../config/plans.js'
+import { ukWeekStart }   from '../../utils/week.js'
 
 const router = Router()
 
@@ -21,13 +22,7 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
   const plan   = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
   const limits = PLAN_LIMITS[plan]
 
-  // Calculate this week's start (Monday 00:00:00)
-  const now = new Date()
-  const day = now.getDay() // 0=Sun, 1=Mon, ...
-  const daysBack = day === 0 ? 6 : day - 1
-  const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() - daysBack)
-  weekStart.setHours(0, 0, 0, 0)
+  const weekStart = ukWeekStart()
 
   // Count actual submitted applications this week (exclude just-saved or recruiter outreach)
   const [weekRow] = await db.select({ total: count() }).from(applications)

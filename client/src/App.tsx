@@ -37,6 +37,7 @@ import PaymentSuccessPage   from '@/pages/app/PaymentSuccessPage'
 // Admin pages
 import AdminUsersPage     from '@/pages/admin/AdminUsersPage'
 import AdminTasksPage     from '@/pages/admin/AdminTasksPage'
+import AdminWeeklyPage    from '@/pages/admin/AdminWeeklyPage'
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage'
 import AdminSettingsPage  from '@/pages/admin/AdminSettingsPage'
 
@@ -101,6 +102,7 @@ export default function App() {
           <Route path={ROUTES.ADMIN}          element={<Navigate to={ROUTES.ADMIN_USERS} replace />} />
           <Route path={ROUTES.ADMIN_USERS}    element={<AdminUsersPage />}     />
           <Route path={ROUTES.ADMIN_TASKS}    element={<AdminTasksPage />}     />
+          <Route path={ROUTES.ADMIN_WEEKLY}   element={<AdminWeeklyPage />}   />
           <Route path={ROUTES.ADMIN_ANALYTICS}element={<AdminAnalyticsPage />} />
           <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />}  />
         </Route>

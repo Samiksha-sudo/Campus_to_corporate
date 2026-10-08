@@ -1,11 +1,12 @@
 import { Outlet, NavLink, Link } from 'react-router-dom'
-import { Users, BarChart2, Settings, Shield, ArrowLeft, ClipboardList } from 'lucide-react'
+import { Users, BarChart2, Settings, Shield, ArrowLeft, ClipboardList, CalendarDays } from 'lucide-react'
 import { cn }         from '@/utils/cn'
 import { ROUTES }     from '@/config/routes'
 
 const adminNav = [
   { label: 'Users',     href: ROUTES.ADMIN_USERS,     icon: Users         },
   { label: 'Tasks',     href: ROUTES.ADMIN_TASKS,     icon: ClipboardList },
+  { label: 'Weekly',    href: ROUTES.ADMIN_WEEKLY,    icon: CalendarDays  },
   { label: 'Analytics', href: ROUTES.ADMIN_ANALYTICS, icon: BarChart2     },
   { label: 'Settings',  href: ROUTES.ADMIN_SETTINGS,  icon: Settings      },
 ]

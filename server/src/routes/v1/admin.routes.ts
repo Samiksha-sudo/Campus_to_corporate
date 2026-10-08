@@ -1,5 +1,5 @@
 import { Router }       from 'express'
-import { eq, desc, isNull, and } from 'drizzle-orm'
+import { eq, desc, isNull, and, gte } from 'drizzle-orm'
 import { authenticate }  from '../../middleware/auth.js'
 import { requireAdmin }  from '../../middleware/rbac.js'
 import { asyncHandler }  from '../../utils/asyncHandler.js'
@@ -10,6 +10,7 @@ import { gmailConnections } from '../../db/schema/gmail.js'
 import { applications } from '../../db/schema/applications.js'
 import { cvs }          from '../../db/schema/cvs.js'
 import { PLAN_LIMITS }  from '../../config/plans.js'
+import { ukWeekStart }  from '../../utils/week.js'
 
 const router = Router()
 
@@ -55,12 +56,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
     const limits = PLAN_LIMITS[plan]
 
     // Weekly usage — count actual submitted apps created since Monday
-    const now = new Date()
-    const day = now.getDay()
-    const daysBack = day === 0 ? 6 : day - 1
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - daysBack)
-    weekStart.setHours(0, 0, 0, 0)
+    const weekStart = ukWeekStart()
     const weeklyUsed = allApps.filter(a =>
       !['SAVED', 'RECRUITER_OUTREACH'].includes(a.status) &&
       new Date(a.createdAt) >= weekStart
@@ -145,6 +141,49 @@ router.get('/users', asyncHandler(async (_req, res) => {
   }
 
   res.json({ success: true, data: { users: enriched, stats } })
+}))
+
+// GET /api/admin/weekly?weeks=8 — per-customer submitted applications per week (UK weeks, Mon 00:00 reset)
+router.get('/weekly', asyncHandler(async (req, res) => {
+  const weeks = Math.min(26, Math.max(1, Number(req.query.weeks) || 8))
+  const starts = Array.from({ length: weeks }, (_, i) => ukWeekStart(new Date(), weeks - 1 - i))
+  const rangeStart = starts[0]
+
+  const allUsers = await db.select().from(users).where(isNull(users.deletedAt)).orderBy(desc(users.createdAt))
+  const subs = await db.select().from(subscriptions)
+  const apps = await db.select({ userId: applications.userId, status: applications.status, createdAt: applications.createdAt })
+    .from(applications).where(gte(applications.createdAt, rangeStart))
+
+  const planByUser = new Map(subs.map(s => [s.userId, s.plan]))
+  const buckets = new Map<string, number[]>()
+  for (const a of apps) {
+    if (['SAVED', 'RECRUITER_OUTREACH'].includes(a.status)) continue
+    const t = new Date(a.createdAt).getTime()
+    let idx = -1
+    for (let i = starts.length - 1; i >= 0; i--) { if (t >= starts[i].getTime()) { idx = i; break } }
+    if (idx < 0) continue
+    const row = buckets.get(a.userId) ?? new Array(weeks).fill(0)
+    row[idx]++
+    buckets.set(a.userId, row)
+  }
+
+  const customers = allUsers.map(u => {
+    const plan = (planByUser.get(u.id) ?? 'STARTER') as keyof typeof PLAN_LIMITS
+    const limit = PLAN_LIMITS[plan].weeklyApplications
+    const perWeek = buckets.get(u.id) ?? new Array(weeks).fill(0)
+    return {
+      id: u.id, name: `${u.firstName} ${u.lastName}`, email: u.email, plan,
+      weeklyLimit: limit === Infinity ? 9999 : limit,
+      thisWeek: perWeek[weeks - 1],
+      perWeek,
+    }
+  })
+
+  res.json({ success: true, data: {
+    weeks: starts.map(d => d.toISOString()),
+    resetsAt: ukWeekStart(new Date(Date.now() + 7 * 864e5)).toISOString(),
+    customers,
+  } })
 }))
 
 // PATCH /api/admin/users/:id/role — change user role
