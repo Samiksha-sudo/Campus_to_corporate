@@ -24,7 +24,7 @@ const PLAN_CONFIG: Record<string, { label: string; price: string; color: string;
   STARTER:  { label: 'Starter',  price: 'Free',    color: 'bg-slate-100 text-slate-600 border-slate-200',    desc: 'Guidance + free CV review', features: ['Career guidance & resources', '1 free CV review'] },
   EXPLORE:  { label: 'Explore',  price: '£10/mo',  color: 'bg-teal-50 text-teal-700 border-teal-200',        desc: 'Build your profile',        features: ['1 CV review + 1 CV change', 'Application tracker (10 jobs/wk)', 'Application status tracking'] },
   LAUNCH:   { label: 'Launch',   price: '£20/mo',  color: 'bg-blue-50 text-blue-700 border-blue-200',        desc: 'Land your first interview', features: ['Unlimited CV changes', '50 applications/week', '1 guaranteed interview/month', 'LinkedIn optimisation'] },
-  MOMENTUM: { label: 'Momentum', price: '£40/mo',  color: 'bg-violet-50 text-violet-700 border-violet-200',  desc: 'Multiple interviews/month', features: ['Unlimited CV changes', '200 applications/week', 'Multiple interviews/month', 'Cover letters + interview prep'] },
+  MOMENTUM: { label: 'Pro',      price: '£49/mo',  color: 'bg-violet-50 text-violet-700 border-violet-200',  desc: 'Multiple interviews/month', features: ['Unlimited CV changes', '100 applications/week', 'Multiple interviews/month', 'Cover letters + interview prep'] },
 }
 
 const STATUS_COLOR: Record<string, string> = {

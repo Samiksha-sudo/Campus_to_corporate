@@ -76,22 +76,22 @@ const plans: Plan[] = [
       { text: 'Guaranteed 1 interview per month',     included: true  },
       { text: 'LinkedIn profile optimisation',        included: true  },
       { text: 'Evidence Bank (unlimited)',            included: true  },
-      { text: '200 applications per week',            included: false },
+      { text: '100 applications per week',            included: false },
     ],
   },
   {
-    name:       'Momentum',
-    monthly:    '£40',
-    annual:     '£32',
+    name:       'Pro',
+    monthly:    '£49',
+    annual:     '£39',
     period:     'per month',
     tagline:    'Multiple interviews every month.',
-    cta:        'Start Momentum',
+    cta:        'Start Pro',
     ctaVariant: 'primary',
     highlight:  true,
     features: [
       { text: 'Everything in Launch',                 included: true  },
       { text: 'Unlimited CV changes',                 included: true  },
-      { text: '200 job applications per week',        included: true  },
+      { text: '100 job applications per week',        included: true  },
       { text: 'Application status tracking',          included: true  },
       { text: 'Multiple interviews per month',        included: true  },
       { text: 'Cover letter writing (unlimited)',     included: true  },
@@ -112,7 +112,7 @@ const faqs = [
   },
   {
     q: 'How does the weekly application limit work?',
-    a: 'Applications reset every 7 days from your plan start date. Launch gets 50/week, Momentum gets 200/week. You approve every application before it goes out.',
+    a: 'Applications reset every 7 days from your plan start date. Launch gets 50/week, Pro gets 100/week. You approve every application before it goes out.',
   },
   {
     q: 'What is application status tracking?',
@@ -127,12 +127,12 @@ const faqs = [
     a: 'Yes. Cancel from Settings at any time. You keep access until the end of your billing period. No questions asked.',
   },
   {
-    q: 'What\'s the difference between Launch and Momentum?',
-    a: 'Launch gives you 50 applications/week and a guaranteed interview per month. Momentum gives you 200/week, multiple interviews per month, personalised cover letters, a dedicated specialist, and priority queuing.',
+    q: 'What\'s the difference between Launch and Pro?',
+    a: 'Launch gives you 50 applications/week and a guaranteed interview per month. Pro gives you 100/week, multiple interviews per month, personalised cover letters, a dedicated specialist, and priority queuing.',
   },
   {
     q: 'Is there an annual discount?',
-    a: 'Yes — pay annually and save 20%. Explore drops to £8/mo, Launch to £16/mo (£192/yr), Momentum to £32/mo (£384/yr).',
+    a: 'Yes — pay annually and save 20%. Explore drops to £8/mo, Launch to £16/mo (£192/yr), Pro to £39/mo (£470/yr).',
   },
 ]
 

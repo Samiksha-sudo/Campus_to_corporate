@@ -16,7 +16,7 @@ const PLAN_LABEL: Record<string, string> = {
   STARTER:  'Starter · Free',
   EXPLORE:  'Explore · £10/mo',
   LAUNCH:   'Launch · £20/mo',
-  MOMENTUM: 'Momentum · £40/mo',
+  MOMENTUM: 'Pro · £49/mo',
 }
 
 const PLAN_COLOR: Record<string, string> = {
@@ -27,7 +27,7 @@ const PLAN_COLOR: Record<string, string> = {
 }
 
 const WEEKLY_LIMIT: Record<string, number> = {
-  STARTER: 0, EXPLORE: 10, LAUNCH: 50, MOMENTUM: 200,
+  STARTER: 0, EXPLORE: 10, LAUNCH: 50, MOMENTUM: 100,
 }
 
 function StatCard({ icon: Icon, label, value, sub, href, color = 'bg-brand-50 text-brand-600' }: {

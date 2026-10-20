@@ -60,7 +60,7 @@ const PLAN_LABEL: Record<string, string> = {
   STARTER:  'Starter',
   EXPLORE:  'Explore',
   LAUNCH:   'Launch',
-  MOMENTUM: 'Momentum',
+  MOMENTUM: 'Pro',
 }
 const STATUS_DOT: Record<string, string> = {
   ACTIVE:     'bg-emerald-400',

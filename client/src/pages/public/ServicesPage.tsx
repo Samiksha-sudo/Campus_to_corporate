@@ -66,7 +66,7 @@ const services = [
     body: `Tailored to the company and role you're interviewing for. Includes likely questions, structured
     answers from your Evidence Bank, STAR method practice, and a 60-minute coaching session with a
     career specialist.`,
-    included: 'Momentum & one-off',
+    included: 'Pro & one-off',
   },
   {
     icon: <BarChart2 size={24} />,
@@ -144,7 +144,7 @@ export default function ServicesPage() {
           </h2>
           <p className="text-slate-500 mb-8">
             The Explore plan is free and includes the Evidence Bank and application tracker.
-            Launch and Momentum add AI CV writing and specialist reviews. Individual services
+            Launch and Pro add AI CV writing and specialist reviews. Individual services
             can be purchased without a subscription.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

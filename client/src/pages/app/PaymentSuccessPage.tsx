@@ -13,10 +13,10 @@ const PLAN_CONFIG: Record<string, { label: string; price: string; color: string;
     features: ['50 job applications per week', 'Unlimited CV changes', '1 guaranteed interview per month', 'LinkedIn optimisation'],
   },
   MOMENTUM: {
-    label: 'Momentum',
-    price: '£40/month',
+    label: 'Pro',
+    price: '£49/month',
     color: 'from-violet-500 to-violet-600',
-    features: ['200 job applications per week', 'Unlimited CV changes', 'Multiple interviews per month', 'Cover letters + interview prep', 'Dedicated career specialist'],
+    features: ['100 job applications per week', 'Unlimited CV changes', 'Multiple interviews per month', 'Cover letters + interview prep', 'Dedicated career specialist'],
   },
 }
 

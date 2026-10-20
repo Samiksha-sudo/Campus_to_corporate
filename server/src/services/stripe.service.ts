@@ -63,7 +63,7 @@ export async function createBillingPortal(userId: string): Promise<string> {
 type PaidPlan = 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
 const PLAN_RANK: Record<PaidPlan, number> = { EXPLORE: 1, LAUNCH: 2, MOMENTUM: 3 }
 // Fallback when price IDs are not configured: monthly price in pence
-const AMOUNT_TO_PLAN: Record<number, PaidPlan> = { 4000: 'MOMENTUM', 2000: 'LAUNCH' }
+const AMOUNT_TO_PLAN: Record<number, PaidPlan> = { 4900: 'MOMENTUM', 4000: 'MOMENTUM', 2000: 'LAUNCH' }
 
 // Work out which plan a Stripe subscription is for. The price actually paid is the
 // source of truth; metadata is only a fallback (it can be missing or stale).
@@ -154,7 +154,7 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
 const LIVE_STATUSES: Stripe.Subscription.Status[] = ['active', 'trialing', 'past_due']
 
 // Sync the user's Stripe subscriptions into the DB — called after checkout and from webhooks.
-// Picks the highest-tier live subscription, so paying £40 always lands on Momentum.
+// Picks the highest-tier live subscription, so paying £49 always lands on Pro (internal key MOMENTUM).
 export async function syncPlan(userId: string): Promise<void> {
   const stripe = getStripe()
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)

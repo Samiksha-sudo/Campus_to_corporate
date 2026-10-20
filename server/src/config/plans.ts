@@ -22,7 +22,7 @@ export const PLAN_LIMITS = {
   },
   MOMENTUM: {
     cvChanges:          Infinity,
-    weeklyApplications: 200,
+    weeklyApplications: 100,
     coverLetters:       true,
     linkedIn:           true,
     interviewGuarantee: true,   // multiple/month

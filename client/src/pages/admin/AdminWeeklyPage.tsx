@@ -18,7 +18,7 @@ const PLAN_STYLE: Record<string, string> = {
 
 function UsageSlider({ c }: { c: Customer }) {
   const qc = useQueryClient()
-  const max = c.weeklyLimit >= 9999 ? 200 : c.weeklyLimit
+  const max = c.weeklyLimit >= 9999 ? 100 : c.weeklyLimit
   const [val, setVal] = useState(c.thisWeek)
   useEffect(() => setVal(c.thisWeek), [c.thisWeek])
 

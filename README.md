@@ -35,9 +35,9 @@
 | Starter | £0 | 0 | 1 CV change |
 | Explore | £10 | 10 | |
 | Launch | £20 | 50 | Unlimited CV changes, LinkedIn, 1 guaranteed interview/month |
-| Momentum | £40 | 200 | Cover letters, multiple guaranteed interviews, dedicated specialist |
+| Pro | £49 | 100 | Cover letters, multiple guaranteed interviews, dedicated specialist |
 
-The plan is taken from the **Stripe price actually paid** (by price ID, falling back to amount), so paying £40 always results in Momentum. If a customer holds more than one live subscription, the highest tier wins.
+The plan is taken from the **Stripe price actually paid** (by price ID, falling back to amount), so paying £49 always results in Pro (internal plan key stays `MOMENTUM`). If a customer holds more than one live subscription, the highest tier wins.
 
 ## Tech stack
 
@@ -103,7 +103,7 @@ sequenceDiagram
     U->>API: POST /stripe/checkout { plan }
     API->>S: Create Checkout Session (client_reference_id = userId)
     S-->>U: Hosted checkout
-    U->>S: Pays £40
+    U->>S: Pays £49
     par Webhook (authoritative)
         S->>API: checkout.session.completed / subscription.*
         API->>S: list subscriptions for customer
@@ -206,7 +206,7 @@ npm run dev                          # client + server together
 
 ### Stripe setup
 
-1. Create recurring prices (Explore £10, Launch £20, Momentum £40) and set `STRIPE_PRICE_EXPLORE`, `STRIPE_PRICE_LAUNCH`, `STRIPE_PRICE_MOMENTUM`.
+1. Create recurring prices (Explore £10, Launch £20, Pro £49) and set `STRIPE_PRICE_EXPLORE`, `STRIPE_PRICE_LAUNCH`, `STRIPE_PRICE_MOMENTUM`.
 2. Point a webhook at `/api/v1/stripe/webhook` with events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, and set `STRIPE_WEBHOOK_SECRET`.
 3. Locally, use `stripe listen --forward-to localhost:4000/api/v1/stripe/webhook`.
 
