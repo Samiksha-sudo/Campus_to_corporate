@@ -46,6 +46,7 @@ const PLAN_GRADIENT: Record<string, string> = {
   EXPLORE:  'from-slate-500 to-slate-600',
   LAUNCH:   'from-blue-500 to-indigo-600',
   MOMENTUM: 'from-violet-500 to-purple-600',
+  ELITE:    'from-amber-400 to-amber-600',
 }
 
 const fadeUp = {

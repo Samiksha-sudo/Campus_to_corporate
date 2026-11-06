@@ -31,6 +31,7 @@ import ApplicationsPage  from '@/pages/app/ApplicationsPage'
 import AnalyticsPage     from '@/pages/app/AnalyticsPage'
 import NotificationsPage from '@/pages/app/NotificationsPage'
 import SettingsPage      from '@/pages/app/SettingsPage'
+import ConciergePage     from '@/pages/app/ConciergePage'
 import ProfilePage          from '@/pages/app/ProfilePage'
 import PaymentSuccessPage   from '@/pages/app/PaymentSuccessPage'
 
@@ -93,6 +94,7 @@ export default function App() {
           <Route path={ROUTES.ANALYTICS}    element={<AnalyticsPage />}     />
           <Route path={ROUTES.NOTIFICATIONS}element={<NotificationsPage />} />
           <Route path={ROUTES.SETTINGS}          element={<SettingsPage />}       />
+          <Route path={ROUTES.CONCIERGE}         element={<ConciergePage />}      />
           <Route path={ROUTES.PROFILE}           element={<ProfilePage />}        />
           <Route path="/app/payment-success"     element={<PaymentSuccessPage />} />
         </Route>

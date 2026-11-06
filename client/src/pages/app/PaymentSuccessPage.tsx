@@ -4,21 +4,22 @@ import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ROUTES } from '@/config/routes'
 import api from '@/services/api'
+import { PLANS } from '@/config/plans'
 
-const PLAN_CONFIG: Record<string, { label: string; price: string; color: string; features: string[] }> = {
-  LAUNCH: {
-    label: 'Launch',
-    price: '£20/month',
-    color: 'from-blue-500 to-blue-600',
-    features: ['50 job applications per week', 'Unlimited CV changes', '1 guaranteed interview per month', 'LinkedIn optimisation'],
-  },
-  MOMENTUM: {
-    label: 'Pro',
-    price: '£49/month',
-    color: 'from-violet-500 to-violet-600',
-    features: ['100 job applications per week', 'Unlimited CV changes', 'Multiple interviews per month', 'Cover letters + interview prep', 'Dedicated career specialist'],
-  },
+const PLAN_GRADIENT: Record<string, string> = {
+  EXPLORE:  'from-teal-500 to-teal-600',
+  LAUNCH:   'from-blue-500 to-blue-600',
+  MOMENTUM: 'from-violet-500 to-violet-600',
+  ELITE:    'from-amber-500 to-amber-600',
 }
+
+const PLAN_CONFIG: Record<string, { label: string; price: string; color: string; features: string[] }> =
+  Object.fromEntries((['EXPLORE', 'LAUNCH', 'MOMENTUM', 'ELITE'] as const).map(k => [k, {
+    label:    PLANS[k].name,
+    price:    `${PLANS[k].price}/month`,
+    color:    PLAN_GRADIENT[k],
+    features: PLANS[k].features.slice(0, 5),
+  }]))
 
 export default function PaymentSuccessPage() {
   const [params]   = useSearchParams()

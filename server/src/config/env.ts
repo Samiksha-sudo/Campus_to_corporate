@@ -32,6 +32,7 @@ const schema = z.object({
   STRIPE_PRICE_EXPLORE:   z.string().optional(),
   STRIPE_PRICE_LAUNCH:    z.string().optional(),
   STRIPE_PRICE_MOMENTUM:  z.string().optional(),
+  STRIPE_PRICE_ELITE:     z.string().optional(),
 
   GOOGLE_CLIENT_ID:     z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

@@ -14,6 +14,7 @@ const PLAN_STYLE: Record<string, string> = {
   EXPLORE:  'bg-slate-200 text-slate-700',
   LAUNCH:   'bg-blue-100 text-blue-700',
   MOMENTUM: 'bg-violet-100 text-violet-700',
+  ELITE:    'bg-amber-100 text-amber-800',
 }
 
 function UsageSlider({ c }: { c: Customer }) {

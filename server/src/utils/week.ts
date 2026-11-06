@@ -37,3 +37,8 @@ export function effectiveWeeklyUsed(
   }
   return derived
 }
+
+/** Instant the current allowance period ends (next Monday 00:00 UK) — i.e. when the counter resets. */
+export function ukWeekEnd(now = new Date()): Date {
+  return ukWeekStart(new Date(ukWeekStart(now).getTime() + 7.5 * 864e5))
+}

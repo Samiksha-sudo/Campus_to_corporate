@@ -10,13 +10,14 @@ import api              from '@/services/api'
 
 interface CV          { id: string; title: string; status: string; isPrimary: number }
 interface Application { id: string; companyName: string; jobTitle: string; status: string; userApproved: number }
-interface SubData     { plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null; cvReviewDone?: boolean }
+interface SubData     { plan: string; status: string; weeklyApplicationsUsed: number; weeklyApplicationsLimit?: number; weeklyApplicationsRemaining?: number; trialEnd: string | null; cvReviewDone?: boolean }
 
 const PLAN_LABEL: Record<string, string> = {
   STARTER:  'Starter · Free',
   EXPLORE:  'Explore · £10/mo',
   LAUNCH:   'Launch · £20/mo',
   MOMENTUM: 'Pro · £49/mo',
+  ELITE:    'Elite Concierge · £100/mo',
 }
 
 const PLAN_COLOR: Record<string, string> = {
@@ -24,11 +25,9 @@ const PLAN_COLOR: Record<string, string> = {
   EXPLORE:  'bg-teal-50 text-teal-700',
   LAUNCH:   'bg-blue-50 text-blue-700',
   MOMENTUM: 'bg-violet-50 text-violet-700',
+  ELITE:    'bg-amber-50 text-amber-800',
 }
 
-const WEEKLY_LIMIT: Record<string, number> = {
-  STARTER: 0, EXPLORE: 10, LAUNCH: 50, MOMENTUM: 100,
-}
 
 function StatCard({ icon: Icon, label, value, sub, href, color = 'bg-brand-50 text-brand-600' }: {
   icon: React.ElementType; label: string; value: string | number; sub?: string; href?: string; color?: string
@@ -48,8 +47,8 @@ function StatCard({ icon: Icon, label, value, sub, href, color = 'bg-brand-50 te
   return href ? <Link to={href}>{card}</Link> : card
 }
 
-function PlanBanner({ plan, status, weeklyUsed, trialEnd, cvReviewDone }: SubData & { weeklyUsed: number }) {
-  const limit = WEEKLY_LIMIT[plan] ?? 0
+function PlanBanner({ plan, status, weeklyUsed, weeklyLimit, trialEnd, cvReviewDone }: SubData & { weeklyUsed: number; weeklyLimit?: number }) {
+  const limit = weeklyLimit ?? 0
   const pct   = limit > 0 ? Math.min(100, Math.round((weeklyUsed / limit) * 100)) : 0
 
   if (plan === 'STARTER') {
@@ -59,8 +58,8 @@ function PlanBanner({ plan, status, weeklyUsed, trialEnd, cvReviewDone }: SubDat
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold opacity-80 mb-1">You're on the Starter plan</p>
-              <h2 className="text-xl font-display font-bold mb-2">Upgrade to start getting interviews</h2>
-              <p className="text-sm opacity-80">Launch gives you 50 job applications per week + 1 guaranteed interview per month.</p>
+              <h2 className="text-xl font-display font-bold mb-2">Upgrade for more support</h2>
+              <p className="text-sm opacity-80">Launch gives you up to 100 applications per week, unlimited CV changes and LinkedIn optimisation.</p>
             </div>
             <Link
               to={ROUTES.SETTINGS}
@@ -112,7 +111,7 @@ function PlanBanner({ plan, status, weeklyUsed, trialEnd, cvReviewDone }: SubDat
             </span>
           )}
         </div>
-        <Link to={ROUTES.SETTINGS} className="text-xs text-brand-600 hover:underline">Manage plan</Link>
+        <Link to={plan === 'ELITE' ? ROUTES.CONCIERGE : ROUTES.SETTINGS} className="text-xs text-brand-600 hover:underline">{plan === 'ELITE' ? 'Open Concierge' : 'Manage plan'}</Link>
       </div>
       {limit > 0 && (
         <div>
@@ -143,10 +142,10 @@ export default function DashboardPage() {
     queryKey: ['applications'],
     queryFn:  () => api.get('/applications').then(r => r.data.data),
   })
-  const { data: stripeData } = useQuery<{ plan: string; status: string; weeklyApplicationsUsed: number; trialEnd: string | null; cvReviewDone: boolean }>({
+  const { data: stripeData } = useQuery<{ plan: string; status: string; weeklyApplicationsUsed: number; weeklyApplicationsLimit?: number; trialEnd: string | null; cvReviewDone: boolean }>({
     queryKey: ['subscription'],
     queryFn:  () => api.get('/stripe/subscription').then(r => r.data.data).catch(() => ({
-      plan: 'EXPLORE', status: 'ACTIVE', weeklyApplicationsUsed: 0, trialEnd: null, cvReviewDone: false,
+      plan: 'STARTER', status: 'ACTIVE', weeklyApplicationsUsed: 0, weeklyApplicationsLimit: 0, trialEnd: null, cvReviewDone: false,
     })),
   })
 
@@ -180,6 +179,7 @@ export default function DashboardPage() {
           status={sub.status}
           weeklyApplicationsUsed={sub.weeklyApplicationsUsed}
           weeklyUsed={sub.weeklyApplicationsUsed}
+          weeklyLimit={sub.weeklyApplicationsLimit}
           trialEnd={sub.trialEnd}
           cvReviewDone={sub.cvReviewDone}
         />

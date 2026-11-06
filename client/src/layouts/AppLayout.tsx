@@ -1,13 +1,15 @@
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, Briefcase, BarChart2,
-  Bell, Settings, ChevronLeft, LogOut, Menu, ShieldCheck,
+  Bell, Settings, ChevronLeft, LogOut, Menu, ShieldCheck, Sparkles,
 } from 'lucide-react'
 import { cn }           from '@/utils/cn'
 import { ROUTES }       from '@/config/routes'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore }   from '@/stores/ui.store'
 import { useAuth }      from '@/hooks/useAuth'
+import { useQuery }     from '@tanstack/react-query'
+import api              from '@/services/api'
 
 const navItems = [
   { label: 'Dashboard',    href: ROUTES.DASHBOARD,    icon: LayoutDashboard },
@@ -25,6 +27,13 @@ export default function AppLayout() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
   const { logout }                   = useAuth()
   const navigate                     = useNavigate()
+  const { data: sub } = useQuery<{ plan: string }>({
+    queryKey: ['subscription'],
+    queryFn:  () => api.get('/stripe/subscription').then(r => r.data.data),
+  })
+  const items = sub?.plan === 'ELITE'
+    ? [...navItems, { label: 'Concierge', href: ROUTES.CONCIERGE, icon: Sparkles }]
+    : navItems
 
   const initials = user
     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
@@ -57,7 +66,7 @@ export default function AppLayout() {
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-          {navItems.map(({ label, href, icon: Icon }) => (
+          {items.map(({ label, href, icon: Icon }) => (
             <NavLink
               key={href}
               to={href}

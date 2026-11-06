@@ -1,156 +1,211 @@
 import { useState }         from 'react'
 import { Link }             from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, X, ChevronDown, ArrowRight, Zap } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Check, Minus, Sparkles } from 'lucide-react'
 import { cn }               from '@/utils/cn'
-import { Button, Badge }    from '@/components/ui'
 import { ROUTES }           from '@/config/routes'
+import { PLANS, PLAN_ORDER, type PlanDef, type PlanKey } from '@/config/plans'
+import { useAuthStore }     from '@/stores/auth.store'
 
-// ─── Plans ────────────────────────────────────────────────────────────────────
-interface Plan {
-  name:       string
-  monthly:    string
-  annual:     string
-  period:     string
-  tagline:    string
-  cta:        string
-  ctaVariant: 'primary' | 'secondary' | 'accent'
-  popular?:   boolean
-  highlight?: boolean
-  features:   { text: string; included: boolean }[]
+// ─── CTA destination ──────────────────────────────────────────────────────────
+// Logged-out visitors register (carrying the chosen plan); logged-in customers go
+// straight to the billing page, which starts Stripe checkout for the chosen plan.
+function ctaHref(key: PlanKey, authed: boolean): string {
+  if (key === 'STARTER') return authed ? ROUTES.DASHBOARD : ROUTES.REGISTER
+  return authed ? `${ROUTES.SETTINGS}?upgrade=${key}` : `${ROUTES.REGISTER}?plan=${key}`
 }
 
-const plans: Plan[] = [
+// ─── Comparison table ─────────────────────────────────────────────────────────
+type Cell = boolean | string
+const COMPARISON: { group: string; rows: { label: string; values: Record<PlanKey, Cell> }[] }[] = [
   {
-    name:       'Starter',
-    monthly:    '£0',
-    annual:     '£0',
-    period:     'forever',
-    tagline:    'Free career guidance + CV review.',
-    cta:        'Start free',
-    ctaVariant: 'secondary',
-    features: [
-      { text: 'Career guidance & resources',          included: true  },
-      { text: '1 free CV review included',            included: true  },
-      { text: 'Application tracker',                  included: false },
-      { text: 'Application status tracking',          included: false },
-      { text: 'Evidence Bank',                        included: false },
-      { text: 'Unlimited CV changes',                 included: false },
-      { text: 'Job applications',                     included: false },
-      { text: 'Guaranteed interviews',                included: false },
+    group: 'Self-service tools',
+    rows: [
+      { label: 'Career guidance and resources', values: { STARTER: true, EXPLORE: true, LAUNCH: true, MOMENTUM: true, ELITE: true } },
+      { label: 'CV review',                     values: { STARTER: '1 free', EXPLORE: '1', LAUNCH: true, MOMENTUM: 'Priority', ELITE: 'Priority' } },
+      { label: 'CV changes',                    values: { STARTER: false, EXPLORE: '1', LAUNCH: 'Unlimited', MOMENTUM: 'Unlimited', ELITE: 'Unlimited' } },
+      { label: 'Application tracker',           values: { STARTER: true, EXPLORE: 'Up to 10 jobs', LAUNCH: 'Unlimited', MOMENTUM: 'Unlimited', ELITE: 'Unlimited' } },
+      { label: 'Status tracking',               values: { STARTER: true, EXPLORE: true, LAUNCH: true, MOMENTUM: true, ELITE: true } },
+      { label: 'Evidence Bank',                 values: { STARTER: 'Basic', EXPLORE: true, LAUNCH: 'Unlimited', MOMENTUM: 'Unlimited', ELITE: 'Unlimited' } },
+      { label: 'LinkedIn optimisation',         values: { STARTER: false, EXPLORE: false, LAUNCH: true, MOMENTUM: true, ELITE: true } },
+      { label: 'Interview prep resources',      values: { STARTER: false, EXPLORE: false, LAUNCH: true, MOMENTUM: 'Personalised', ELITE: 'Personalised' } },
+      { label: 'Cover letters',                 values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: 'Unlimited', ELITE: true } },
     ],
   },
   {
-    name:       'Explore',
-    monthly:    '£10',
-    annual:     '£8',
-    period:     'per month',
-    tagline:    'Start building your profile.',
-    cta:        'Start Explore',
-    ctaVariant: 'secondary',
-    features: [
-      { text: 'Career guidance & resources',          included: true  },
-      { text: '1 CV review + 1 CV change included',  included: true  },
-      { text: 'Application tracker (up to 10 jobs)',  included: true  },
-      { text: 'Application status tracking',          included: true  },
-      { text: 'Evidence Bank',                        included: false },
-      { text: 'Unlimited CV changes',                 included: false },
-      { text: 'Job applications (50/week)',            included: false },
-      { text: 'Guaranteed interview per month',       included: false },
+    group: 'Weekly application allowance',
+    rows: [
+      { label: 'Applications per week',         values: { STARTER: false, EXPLORE: 'Up to 50', LAUNCH: 'Up to 100', MOMENTUM: 'Up to 100', ELITE: 'Up to 200' } },
     ],
   },
   {
-    name:       'Launch',
-    monthly:    '£20',
-    annual:     '£16',
-    period:     'per month',
-    tagline:    'Land your first interview.',
-    cta:        'Start Launch',
-    ctaVariant: 'primary',
-    popular:    true,
-    features: [
-      { text: 'Career guidance & resources',          included: true  },
-      { text: 'Unlimited CV changes',                 included: true  },
-      { text: '50 job applications per week',         included: true  },
-      { text: 'Application status tracking',          included: true  },
-      { text: 'Guaranteed 1 interview per month',     included: true  },
-      { text: 'LinkedIn profile optimisation',        included: true  },
-      { text: 'Evidence Bank (unlimited)',            included: true  },
-      { text: '100 applications per week',            included: false },
+    group: 'Personal support',
+    rows: [
+      { label: 'Dedicated career specialist',   values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: true, ELITE: true } },
+      { label: 'Recruiter follow-up guidance',  values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: true, ELITE: true } },
+      { label: 'Priority support',              values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: 'Priority reviews', ELITE: true } },
     ],
   },
   {
-    name:       'Pro',
-    monthly:    '£49',
-    annual:     '£39',
-    period:     'per month',
-    tagline:    'Multiple interviews every month.',
-    cta:        'Start Pro',
-    ctaVariant: 'primary',
-    highlight:  true,
-    features: [
-      { text: 'Everything in Launch',                 included: true  },
-      { text: 'Unlimited CV changes',                 included: true  },
-      { text: '100 job applications per week',        included: true  },
-      { text: 'Application status tracking',          included: true  },
-      { text: 'Multiple interviews per month',        included: true  },
-      { text: 'Cover letter writing (unlimited)',     included: true  },
-      { text: 'Interview prep (personalised)',        included: true  },
-      { text: 'Dedicated career specialist',          included: true  },
+    group: 'Fully managed (we do it for you)',
+    rows: [
+      { label: 'Job discovery and shortlisting',                 values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'CV tailoring per role',                          values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'Application preparation and submission',         values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'Recruiter and hiring-manager outreach',          values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'Follow-ups and response tracking',               values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'Interview invitation monitoring and scheduling', values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
+      { label: 'Regular progress reporting',                     values: { STARTER: false, EXPLORE: false, LAUNCH: false, MOMENTUM: false, ELITE: true } },
     ],
   },
 ]
 
+function CellView({ v }: { v: Cell }) {
+  if (v === true)  return <><Check size={16} className="mx-auto text-emerald-600" aria-hidden /><span className="sr-only">Included</span></>
+  if (v === false) return <><Minus size={16} className="mx-auto text-slate-300" aria-hidden /><span className="sr-only">Not included</span></>
+  return <span className="text-xs font-medium text-slate-700">{v}</span>
+}
+
+function ComparisonTable() {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <table className="w-full min-w-[820px] text-sm">
+        <caption className="sr-only">Feature comparison across Starter, Explore, Launch, Pro and Elite Concierge</caption>
+        <thead>
+          <tr className="border-b border-slate-200 bg-slate-50">
+            <th scope="col" className="text-left px-4 py-3 font-semibold text-slate-500 w-[28%]">Feature</th>
+            {PLAN_ORDER.map(k => (
+              <th key={k} scope="col" className={cn('px-3 py-3 text-center font-semibold', k === 'ELITE' ? 'text-amber-700 bg-amber-50' : 'text-slate-900')}>
+                {PLANS[k].name}
+                <span className="block text-xs font-normal text-slate-500">{PLANS[k].price}{PLANS[k].pricePence ? '/mo' : ''}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        {COMPARISON.map(g => (
+          <tbody key={g.group}>
+            <tr><th colSpan={6} scope="colgroup" className="text-left px-4 pt-5 pb-2 text-xs font-bold uppercase tracking-wider text-brand-700">{g.group}</th></tr>
+            {g.rows.map(r => (
+              <tr key={r.label} className="border-t border-slate-100">
+                <th scope="row" className="text-left px-4 py-2.5 font-medium text-slate-700">{r.label}</th>
+                {PLAN_ORDER.map(k => (
+                  <td key={k} className={cn('px-3 py-2.5 text-center', k === 'ELITE' && 'bg-amber-50/50')}>
+                    <CellView v={r.values[k]} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
+    </div>
+  )
+}
+
+// ─── Plan card ────────────────────────────────────────────────────────────────
+function PlanCard({ plan, authed }: { plan: PlanDef; authed: boolean }) {
+  const elite   = plan.key === 'ELITE'
+  const popular = plan.key === 'LAUNCH'
+  const free    = plan.pricePence === 0
+
+  return (
+    <article
+      aria-labelledby={`plan-${plan.key}`}
+      className={cn(
+        'relative flex flex-col rounded-2xl border p-6',
+        elite   && 'bg-slate-900 border-amber-400/60 text-white shadow-xl shadow-amber-500/10 sm:col-span-2 xl:col-span-1',
+        popular && 'bg-white border-brand-500 ring-2 ring-brand-500/30 shadow-lg',
+        !elite && !popular && 'bg-white border-slate-200',
+      )}
+    >
+      {plan.badge && (
+        <span className={cn(
+          'absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold',
+          elite ? 'bg-amber-400 text-slate-900' : popular ? 'bg-brand-600 text-white' : 'bg-violet-600 text-white',
+        )}>
+          {elite && <Sparkles size={12} aria-hidden />}{plan.badge}
+        </span>
+      )}
+
+      <h3 id={`plan-${plan.key}`} className={cn('text-lg font-display font-bold', elite ? 'text-white' : 'text-slate-900')}>
+        {plan.name}
+      </h3>
+      <p className={cn('mt-1 text-sm min-h-[3.5rem]', elite ? 'text-slate-300' : 'text-slate-500')}>{plan.tagline}</p>
+
+      <div className="mt-4 mb-5">
+        <span className={cn('text-4xl font-display font-extrabold', elite ? 'text-white' : 'text-slate-900')}>{plan.price}</span>
+        <span className={cn('ml-1 text-sm', elite ? 'text-slate-400' : 'text-slate-500')}>{plan.period}</span>
+        {plan.weekly > 0 && (
+          <p className={cn('mt-2 text-sm font-semibold', elite ? 'text-amber-300' : 'text-brand-700')}>
+            Up to {plan.weekly} applications per week
+          </p>
+        )}
+      </div>
+
+      <Link
+        to={ctaHref(plan.key, authed)}
+        className={cn(
+          'block w-full text-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+          elite   ? 'bg-amber-400 text-slate-900 hover:bg-amber-300 focus-visible:ring-amber-300 focus-visible:ring-offset-slate-900'
+          : popular ? 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500'
+          : free ? 'bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-slate-400'
+          : 'bg-slate-900 text-white hover:bg-slate-800 focus-visible:ring-slate-500',
+        )}
+      >
+        {plan.cta}
+      </Link>
+
+      <ul className="mt-6 space-y-2.5">
+        {plan.features.map(f => (
+          <li key={f} className={cn('flex items-start gap-2 text-sm', elite ? 'text-slate-200' : 'text-slate-700')}>
+            <CheckCircle2 size={16} className={cn('mt-0.5 shrink-0', elite ? 'text-amber-400' : 'text-emerald-500')} aria-hidden />
+            {f}
+          </li>
+        ))}
+      </ul>
+    </article>
+  )
+}
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
 const faqs = [
   {
-    q: 'What is the Starter plan?',
-    a: 'Starter is completely free — no credit card needed. You get career guidance resources and 1 free CV review to get you started.',
+    q: 'What is the difference between the self-service plans and Elite Concierge?',
+    a: 'Starter, Explore, Launch and Pro give you tools, resources and (on Pro) a dedicated career specialist — you run your own search. Elite Concierge is a managed service: our team finds and shortlists roles, tailors your CV, prepares and submits applications, manages recruiter communication and helps coordinate interviews on your behalf.',
   },
   {
-    q: 'What does "guaranteed 1 interview per month" mean?',
-    a: 'On Launch, we apply to 50 jobs per week on your behalf. If you don\'t receive at least one interview invitation in a month, we\'ll review your profile and strategy at no extra cost.',
+    q: 'How do weekly application limits work?',
+    a: 'Each paid plan has a weekly allowance — the maximum number of applications that can be submitted for you in a week. The week runs Monday 00:00 to Monday 00:00 UK time. Only applications confirmed as submitted count towards it; failed, duplicate or blocked attempts do not. Unused applications do not roll over. The allowance is a ceiling, not a promise of volume — the number submitted depends on suitable roles being available.',
   },
   {
-    q: 'How does the weekly application limit work?',
-    a: 'Applications reset every 7 days from your plan start date. Launch gets 50/week, Pro gets 100/week. You approve every application before it goes out.',
+    q: 'Do you guarantee interviews or job offers?',
+    a: 'No. We cannot guarantee interviews, offers or particular outcomes — those depend on employers and the market. Elite Concierge manages the work of your search, so that your only job is to show up ready for the interview.',
   },
   {
-    q: 'What is application status tracking?',
-    a: 'We show you the real-time status of every application — from Saved through to Applied, Screening, Interview, Offer, or Rejected. No more chasing companies or guessing where things stand.',
+    q: 'What does Elite Concierge do on my behalf?',
+    a: 'Only what you authorise. During onboarding you tell us your target roles, locations, salary range, work authorisation and preferences, and you choose whether we may submit applications and contact recruiters for you. Recruiter messages are drafted and approved before sending, and we never act on your private accounts without your explicit permission.',
   },
   {
-    q: 'Do you apply to jobs on my behalf?',
-    a: 'Yes — but never without your approval. You review every job before we apply. We handle the form-filling, cover letters, and submission.',
+    q: 'Can I upgrade, downgrade or cancel?',
+    a: 'Yes. You can change plan or cancel at any time from Settings via the secure billing portal. Changes take effect according to Stripe billing rules and cancellation stops future renewals.',
   },
   {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Cancel from Settings at any time. You keep access until the end of your billing period. No questions asked.',
-  },
-  {
-    q: 'What\'s the difference between Launch and Pro?',
-    a: 'Launch gives you 50 applications/week and a guaranteed interview per month. Pro gives you 100/week, multiple interviews per month, personalised cover letters, a dedicated specialist, and priority queuing.',
-  },
-  {
-    q: 'Is there an annual discount?',
-    a: 'Yes — pay annually and save 20%. Explore drops to £8/mo, Launch to £16/mo (£192/yr), Pro to £39/mo (£470/yr).',
+    q: 'Which plan should I choose?',
+    a: 'Start free for guidance and a CV review. Choose Explore or Launch to build and send applications yourself, Pro for personal support from a career specialist, and Elite Concierge if you would rather hand the whole search to us.',
   },
 ]
 
-// ─── FAQ accordion item ───────────────────────────────────────────────────────
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
+    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
       >
         <span className="font-semibold text-slate-900 text-sm pr-4">{q}</span>
-        <motion.span
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.22 }}
-          className="shrink-0 text-slate-400"
-        >
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.22 }} className="shrink-0 text-slate-400">
           <ChevronDown size={18} />
         </motion.span>
       </button>
@@ -164,9 +219,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <p className="px-5 pb-5 text-slate-500 text-sm leading-relaxed">
-              {a}
-            </p>
+            <p className="px-5 pb-5 text-slate-500 text-sm leading-relaxed">{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -174,186 +227,91 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   )
 }
 
-// ─── Plan card ────────────────────────────────────────────────────────────────
-function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
-  const price = annual ? plan.annual : plan.monthly
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.45 }}
-      className={cn(
-        'relative rounded-2xl border flex flex-col transition-shadow duration-300',
-        plan.popular
-          ? 'border-brand-400 shadow-brand ring-1 ring-brand-300'
-          : plan.highlight
-            ? 'border-violet-400 shadow-[0_0_0_1px_rgb(139_92_246/0.2),0_8px_32px_-4px_rgb(139_92_246/0.35)]'
-            : 'border-slate-200 hover:shadow-lifted',
-        plan.highlight
-          ? 'bg-gradient-to-b from-slate-950 to-slate-900 text-white'
-          : 'bg-white',
-      )}
-    >
-      {/* Popular / Best value badge */}
-      {plan.popular && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-          <Badge variant="brand">Most popular</Badge>
-        </div>
-      )}
-      {plan.highlight && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-[11px] font-bold px-3 py-1 rounded-full">
-            <Zap size={10} /> Best value
-          </span>
-        </div>
-      )}
-
-      <div className="p-7 flex flex-col flex-1">
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className={cn('font-display font-bold text-xl mb-1', plan.highlight ? 'text-white' : 'text-slate-900')}>
-            {plan.name}
-          </h2>
-          <p className={cn('text-sm mb-4', plan.highlight ? 'text-white/60' : 'text-slate-500')}>
-            {plan.tagline}
-          </p>
-          <div className="flex items-end gap-1.5">
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={price}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.2 }}
-                className={cn('text-4xl font-display font-extrabold', plan.highlight ? 'text-white' : 'text-slate-900')}
-              >
-                {price}
-              </motion.span>
-            </AnimatePresence>
-            <span className={cn('text-sm mb-1', plan.highlight ? 'text-white/50' : 'text-slate-400')}>
-              {plan.monthly === '£0' ? '' : `/ mo${annual ? ' (billed annually)' : ''}`}
-            </span>
-          </div>
-          {plan.monthly !== '£0' && annual && (
-            <p className={cn('text-xs mt-1', plan.highlight ? 'text-violet-300' : 'text-brand-600')}>
-              Save 20% vs monthly
-            </p>
-          )}
-        </div>
-
-        {/* Features */}
-        <ul className="space-y-2.5 mb-8 flex-1">
-          {plan.features.map(({ text, included }) => (
-            <li key={text} className={cn(
-              'flex items-start gap-2 text-sm',
-              included
-                ? plan.highlight ? 'text-white/80' : 'text-slate-700'
-                : plan.highlight ? 'text-white/25' : 'text-slate-400',
-            )}>
-              {included
-                ? <CheckCircle2 size={15} className={plan.highlight ? 'text-violet-400 shrink-0 mt-0.5' : 'text-brand-500 shrink-0 mt-0.5'} />
-                : <X           size={15} className="text-slate-300 shrink-0 mt-0.5" />}
-              {text}
-            </li>
-          ))}
-        </ul>
-
-        <Link to={ROUTES.REGISTER}>
-          <Button
-            variant={plan.highlight ? 'accent' : plan.ctaVariant}
-            className="w-full"
-            iconRight={<ArrowRight size={15} />}
-          >
-            {plan.cta}
-          </Button>
-        </Link>
-      </div>
-    </motion.div>
-  )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(false)
+  const authed = useAuthStore((s) => !!s.user && !!s.accessToken)
 
   return (
     <>
-      {/* Hero */}
-      <section className="section-padding pt-24 pb-16 bg-gradient-to-b from-slate-50 to-white text-center relative overflow-hidden">
+      <section className="section-padding pt-24 pb-14 bg-gradient-to-b from-slate-50 to-white text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-50/80 to-transparent pointer-events-none" />
         <div className="container-xl max-w-2xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <p className="eyebrow mb-4">Pricing</p>
             <h1 className="text-5xl font-display font-extrabold text-slate-900 mb-5">
-              Start free. Scale with you.
+              Choose how much support you need.
             </h1>
-            <p className="text-xl text-slate-500 mb-10">
-              Transparent pricing. No hidden fees. Cancel anytime.
+            <p className="text-xl text-slate-500">
+              From free career guidance to a fully managed job search, find the right plan for your next opportunity.
             </p>
-
-            {/* Billing toggle */}
-            <div className="inline-flex items-center gap-3 bg-slate-100 rounded-xl p-1">
-              <button
-                onClick={() => setAnnual(false)}
-                className={cn(
-                  'px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200',
-                  !annual ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700',
-                )}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setAnnual(true)}
-                className={cn(
-                  'px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2',
-                  annual ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700',
-                )}
-              >
-                Annual
-                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  Save 20%
-                </span>
-              </button>
-            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Plans */}
-      <section className="pb-20 bg-white">
+      <section className="pb-16 bg-white" aria-label="Plans">
         <div className="container-xl">
-          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 max-w-6xl mx-auto">
-            {plans.map((plan) => (
-              <PlanCard key={plan.name} plan={plan} annual={annual} />
-            ))}
+          <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-5 max-w-[88rem] mx-auto pt-3">
+            {PLAN_ORDER.map((k) => <PlanCard key={k} plan={PLANS[k]} authed={authed} />)}
           </div>
-
           <p className="text-center text-sm text-slate-400 mt-6">
-            All plans include UK GDPR compliance, secure file storage, and 2FA.
+            Prices are per month in GBP. Weekly limits are maximum allowances, not guaranteed volumes. Cancel anytime.
           </p>
         </div>
       </section>
 
-      {/* FAQ */}
+      {/* Elite spotlight */}
+      <section className="pb-16 bg-white">
+        <div className="container-xl max-w-4xl mx-auto">
+          <div className="rounded-3xl bg-slate-900 text-white p-8 sm:p-12 text-center border border-amber-400/40">
+            <p className="text-amber-300 text-xs font-bold uppercase tracking-widest mb-3">Elite Concierge</p>
+            <h2 className="text-3xl sm:text-4xl font-display font-extrabold mb-4">Your next career move, managed for you.</h2>
+            <p className="text-slate-300 mb-4 leading-relaxed">
+              From finding opportunities and submitting applications to recruiter communication and interview coordination,
+              our team manages your job search so you can concentrate on preparing for your next interview.
+            </p>
+            <p className="text-slate-400 text-sm mb-7">Your only job is to show up ready for the interview.</p>
+            <Link
+              to={ctaHref('ELITE', authed)}
+              className="inline-block rounded-xl bg-amber-400 px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-300 transition-colors"
+            >
+              {PLANS.ELITE.cta}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Self-service vs managed */}
+      <section className="pb-16 bg-white">
+        <div className="container-xl max-w-5xl mx-auto grid md:grid-cols-2 gap-5">
+          <div className="rounded-2xl border border-slate-200 p-6">
+            <h2 className="font-display font-bold text-slate-900 text-lg mb-2">Self-service &middot; Starter to Pro</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              You stay in control. Use our CV tools, Evidence Bank, tracker and guidance to run your own search, with
+              weekly application allowances that grow by plan and personal support from a career specialist on Pro.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-6">
+            <h2 className="font-display font-bold text-slate-900 text-lg mb-2">Fully managed &middot; Elite Concierge</h2>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              We do the work. Our team handles discovery, tailoring, applications, recruiter messages, follow-ups and
+              interview scheduling &mdash; with your permission at every step &mdash; and keeps you updated with regular progress reports.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="pb-20 bg-white" aria-label="Compare plans">
+        <div className="container-xl max-w-6xl mx-auto">
+          <h2 className="text-3xl font-display font-bold text-slate-900 text-center mb-8">Compare plans</h2>
+          <ComparisonTable />
+        </div>
+      </section>
+
       <section className="section-padding bg-slate-50">
         <div className="container-xl max-w-2xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-3xl font-display font-bold text-slate-900 text-center mb-10"
-          >
-            Frequently asked questions
-          </motion.h2>
+          <h2 className="text-3xl font-display font-bold text-slate-900 text-center mb-10">Frequently asked questions</h2>
           <div className="space-y-3">
-            {faqs.map(({ q, a }) => (
-              <FAQItem key={q} q={q} a={a} />
-            ))}
+            {faqs.map(({ q, a }) => <FAQItem key={q} q={q} a={a} />)}
           </div>
         </div>
       </section>

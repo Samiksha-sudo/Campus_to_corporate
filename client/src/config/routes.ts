@@ -31,6 +31,7 @@ export const ROUTES = {
   NOTIFICATIONS:  '/app/notifications',
   PROFILE:        '/app/profile',
   SETTINGS:       '/app/settings',
+  CONCIERGE:      '/app/concierge',
 
   // Admin
   ADMIN:          '/admin',

@@ -6,22 +6,25 @@ import { users }   from '../db/schema/users.js'
 import { subscriptions } from '../db/schema/subscriptions.js'
 import { env }     from '../config/env.js'
 import { AppError } from '../utils/errors.js'
+import { PAID_PLANS, PLAN_RANK, resolvePlanFromPrice, type PaidPlan } from '../config/plans.js'
 
 function getStripe() {
   if (!env.STRIPE_SECRET_KEY) throw new AppError(503, 'Stripe not configured', 'STRIPE_NOT_CONFIGURED')
   return new Stripe(env.STRIPE_SECRET_KEY)
 }
 
-const PRICE_MAP: Record<string, string | undefined> = {
+export const PRICE_MAP: Record<PaidPlan, string | undefined> = {
   EXPLORE:  env.STRIPE_PRICE_EXPLORE,
   LAUNCH:   env.STRIPE_PRICE_LAUNCH,
   MOMENTUM: env.STRIPE_PRICE_MOMENTUM,
+  ELITE:    env.STRIPE_PRICE_ELITE,
 }
 
 export async function createCheckoutSession(userId: string, plan: string): Promise<string> {
   const stripe = getStripe()
 
-  const priceId = PRICE_MAP[plan]
+  if (!(PAID_PLANS as string[]).includes(plan)) throw new AppError(400, `Invalid plan: ${plan}`, 'INVALID_PLAN')
+  const priceId = PRICE_MAP[plan as PaidPlan]
   if (!priceId) throw new AppError(400, `No Stripe price configured for plan: ${plan}`, 'INVALID_PLAN')
 
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
@@ -60,23 +63,14 @@ export async function createBillingPortal(userId: string): Promise<string> {
   return session.url
 }
 
-type PaidPlan = 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
-const PLAN_RANK: Record<PaidPlan, number> = { EXPLORE: 1, LAUNCH: 2, MOMENTUM: 3 }
-// Fallback when price IDs are not configured: monthly price in pence
-const AMOUNT_TO_PLAN: Record<number, PaidPlan> = { 4900: 'MOMENTUM', 4000: 'MOMENTUM', 2000: 'LAUNCH' }
-
 // Work out which plan a Stripe subscription is for. The price actually paid is the
 // source of truth; metadata is only a fallback (it can be missing or stale).
-function resolvePlan(sub: Stripe.Subscription): PaidPlan {
+export function resolvePlan(sub: Stripe.Subscription): PaidPlan {
   const item = sub.items.data[0]
-  const priceId = item?.price.id
-  const byPrice = (Object.keys(PRICE_MAP) as PaidPlan[]).find(k => PRICE_MAP[k] && PRICE_MAP[k] === priceId)
-  if (byPrice) return byPrice
-  const byAmount = item?.price.unit_amount != null ? AMOUNT_TO_PLAN[item.price.unit_amount] : undefined
-  if (byAmount) return byAmount
-  const meta = sub.metadata?.plan as PaidPlan | undefined
-  if (meta && meta in PLAN_RANK) return meta
-  return 'EXPLORE'
+  return resolvePlanFromPrice(
+    { priceId: item?.price.id, unitAmount: item?.price.unit_amount, metadataPlan: sub.metadata?.plan },
+    PRICE_MAP,
+  )
 }
 
 async function applySubscription(userId: string, sub: Stripe.Subscription): Promise<void> {
@@ -136,6 +130,16 @@ export async function handleWebhook(rawBody: Buffer, signature: string): Promise
       if (!userId) break
       // Sync from the full set of subs so an old/cancelled sub event can't downgrade a newer one
       await syncPlan(userId).catch(async () => { await applySubscription(userId, sub) })
+      break
+    }
+    case 'invoice.payment_failed':
+    case 'invoice.payment_succeeded': {
+      // Renewals / failed payments: re-sync so status moves ACTIVE <-> PAST_DUE with Stripe
+      const inv = event.data.object as Stripe.Invoice
+      const customerId = typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
+      if (!customerId) break
+      const [u] = await db.select({ id: users.id }).from(users).where(eq(users.stripeCustomerId, customerId)).limit(1)
+      if (u) await syncPlan(u.id).catch(() => undefined)
       break
     }
     case 'customer.subscription.deleted': {

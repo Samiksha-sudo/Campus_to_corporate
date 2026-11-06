@@ -7,25 +7,35 @@ import { Button }    from '@/components/ui'
 import { useToast }  from '@/hooks/useToast'
 import api           from '@/services/api'
 import { useAuthStore } from '@/stores/auth.store'
+import { PLANS, PLAN_ORDER, isPlanKey, type PlanKey } from '@/config/plans'
 
 interface Subscription {
   plan:                    string
   status:                  string
   weeklyApplicationsUsed:  number
   weeklyApplicationsLimit: number
+  weeklyApplicationsRemaining?: number
+  weeklyResetsAt?:         string
   currentPeriodEnd:        string | null
   cancelAtPeriodEnd:       number
   trialEnd:                string | null
 }
 
-const PLAN_ORDER = ['STARTER', 'EXPLORE', 'LAUNCH', 'MOMENTUM']
-
-const PLAN_CONFIG: Record<string, { label: string; price: string; color: string; desc: string; features: string[] }> = {
-  STARTER:  { label: 'Starter',  price: 'Free',    color: 'bg-slate-100 text-slate-600 border-slate-200',    desc: 'Guidance + free CV review', features: ['Career guidance & resources', '1 free CV review'] },
-  EXPLORE:  { label: 'Explore',  price: '£10/mo',  color: 'bg-teal-50 text-teal-700 border-teal-200',        desc: 'Build your profile',        features: ['1 CV review + 1 CV change', 'Application tracker (10 jobs/wk)', 'Application status tracking'] },
-  LAUNCH:   { label: 'Launch',   price: '£20/mo',  color: 'bg-blue-50 text-blue-700 border-blue-200',        desc: 'Land your first interview', features: ['Unlimited CV changes', '50 applications/week', '1 guaranteed interview/month', 'LinkedIn optimisation'] },
-  MOMENTUM: { label: 'Pro',      price: '£49/mo',  color: 'bg-violet-50 text-violet-700 border-violet-200',  desc: 'Multiple interviews/month', features: ['Unlimited CV changes', '100 applications/week', 'Multiple interviews/month', 'Cover letters + interview prep'] },
+const PLAN_COLORS: Record<string, string> = {
+  STARTER:  'bg-slate-100 text-slate-600 border-slate-200',
+  EXPLORE:  'bg-teal-50 text-teal-700 border-teal-200',
+  LAUNCH:   'bg-blue-50 text-blue-700 border-blue-200',
+  MOMENTUM: 'bg-violet-50 text-violet-700 border-violet-200',
+  ELITE:    'bg-amber-50 text-amber-800 border-amber-300',
 }
+
+const PLAN_CONFIG: Record<string, { label: string; price: string; color: string; features: string[] }> =
+  Object.fromEntries(PLAN_ORDER.map(k => [k, {
+    label:    PLANS[k].name,
+    price:    PLANS[k].pricePence ? `${PLANS[k].price}/mo` : 'Free',
+    color:    PLAN_COLORS[k],
+    features: PLANS[k].features.slice(0, 5),
+  }]))
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:     'text-emerald-700 bg-emerald-50 border-emerald-200',
@@ -68,6 +78,19 @@ function SubscriptionCard() {
     }
   }
 
+  // Arriving from the pricing page with ?upgrade=PLAN starts checkout once.
+  const [params, setParams] = useSearchParams()
+  const wanted     = params.get('upgrade')
+  const currentKey = sub?.plan ?? 'STARTER'
+  useEffect(() => {
+    if (isLoading || !wanted) return
+    setParams({}, { replace: true })
+    if (isPlanKey(wanted) && wanted !== 'STARTER' && PLAN_ORDER.indexOf(wanted) > PLAN_ORDER.indexOf(currentKey as PlanKey)) {
+      void upgrade(wanted)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, isLoading])
+
   if (isLoading) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-5 animate-pulse">
@@ -81,8 +104,8 @@ function SubscriptionCard() {
   const status    = sub?.status ?? 'ACTIVE'
   const isFree    = plan === 'STARTER'
   const cfg       = PLAN_CONFIG[plan] ?? PLAN_CONFIG.STARTER
-  const planIdx   = PLAN_ORDER.indexOf(plan)
-  const upgrades  = PLAN_ORDER.slice(planIdx + 1).filter(p => p !== 'STARTER')
+  const planIdx   = PLAN_ORDER.indexOf(plan as PlanKey)
+  const upgrades: string[] = PLAN_ORDER.slice(planIdx + 1).filter(p => p !== 'STARTER')
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -116,7 +139,7 @@ function SubscriptionCard() {
         {!isFree && sub && sub.weeklyApplicationsLimit > 0 && (
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-slate-500">Applications this week</span>
+              <span className="text-slate-500">Applications this week{sub.weeklyResetsAt ? ` · resets ${fmt(sub.weeklyResetsAt)}` : ''}</span>
               <span className="font-medium text-slate-800">{sub.weeklyApplicationsUsed} / {sub.weeklyApplicationsLimit}</span>
             </div>
             <div className="w-full bg-slate-100 rounded-full h-1.5">
@@ -156,7 +179,7 @@ function SubscriptionCard() {
                 <div key={key} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
                   <div>
                     <p className="text-sm font-medium text-slate-800">{u.label} <span className="text-slate-500 font-normal text-xs">— {u.price}</span></p>
-                    <p className="text-xs text-slate-500">{u.desc}</p>
+                    <p className="text-xs text-slate-500">{PLANS[key as PlanKey].tagline}</p>
                   </div>
                   <Button variant="primary" size="xs" loading={upgrading === key} onClick={() => upgrade(key)}>
                     Upgrade

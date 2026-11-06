@@ -1,5 +1,5 @@
 import { Router }        from 'express'
-import { eq, and, desc, gte, count, sql } from 'drizzle-orm'
+import { eq, and, desc, count, sql } from 'drizzle-orm'
 import { randomUUID }     from 'crypto'
 import { z }              from 'zod'
 import { authenticate }   from '../../middleware/auth.js'
@@ -7,9 +7,8 @@ import { asyncHandler }   from '../../utils/asyncHandler.js'
 import { db }             from '../../config/database.js'
 import { applications }   from '../../db/schema/applications.js'
 import { subscriptions }  from '../../db/schema/subscriptions.js'
-import { PLAN_LIMITS }    from '../../config/plans.js'
+import { planLimits }     from '../../config/plans.js'
 import { AppError }       from '../../utils/errors.js'
-import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
 
 const router = Router()
 router.use(authenticate)
@@ -67,27 +66,21 @@ router.post('/', asyncHandler(async (req, res) => {
   const userId = req.user!.id
   const body = createSchema.parse(req.body)
 
-  // Check weekly application limit
+  // The tracker cap applies to self-tracked jobs. The weekly application allowance is a separate
+  // limit on verified submitted applications and is enforced where submissions are recorded.
   const [sub] = await db.select().from(subscriptions)
     .where(eq(subscriptions.userId, userId)).limit(1)
-  const plan = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
-  const limits = PLAN_LIMITS[plan]
+  const limits = planLimits(sub?.plan)
 
-  if (limits.weeklyApplications === 0) {
-    throw new AppError(403, 'Upgrade your plan to submit applications.')
-  }
-
-  // Weekly usage = real submitted applications since Monday 00:00 UK (resets Sunday midnight)
-  const [weekRow] = await db.select({ total: count() }).from(applications)
-    .where(and(
-      eq(applications.userId, userId),
-      gte(applications.createdAt, ukWeekStart()),
-      sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
-    ))
-  const weeklyUsed = effectiveWeeklyUsed(sub, weekRow?.total ?? 0)
-
-  if (weeklyUsed >= limits.weeklyApplications) {
-    throw new AppError(403, `Weekly limit reached (${limits.weeklyApplications} applications). Resets Monday 00:00.`)
+  if (limits.trackerJobs !== Infinity) {
+    const [row] = await db.select({ total: count() }).from(applications)
+      .where(and(
+        eq(applications.userId, userId),
+        sql`${applications.status} NOT IN ('WITHDRAWN', 'ROLE_CLOSED')`,
+      ))
+    if ((row?.total ?? 0) >= limits.trackerJobs) {
+      throw new AppError(403, `Your plan tracks up to ${limits.trackerJobs} jobs. Upgrade to track more.`, 'TRACKER_LIMIT')
+    }
   }
 
   const id = randomUUID()

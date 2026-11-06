@@ -76,9 +76,11 @@ export function StatusBadge({ status }: { status: ApplicationStatus }) {
 }
 
 const planConfig: Record<SubscriptionPlan, { label: string; className: string }> = {
+  STARTER:  { label: 'Starter',  className: 'bg-slate-100  text-slate-500'  },
   EXPLORE:  { label: 'Explore',  className: 'bg-slate-100  text-slate-600'  },
   LAUNCH:   { label: 'Launch',   className: 'bg-brand-100  text-brand-700'  },
   MOMENTUM: { label: 'Pro', className: 'bg-brand-600  text-white'      },
+  ELITE:    { label: 'Elite', className: 'bg-amber-400  text-slate-900'  },
 }
 
 export function PlanBadge({ plan }: { plan: SubscriptionPlan }) {

@@ -34,12 +34,12 @@ interface AdminUser {
   cvsByStatus:   Record<string, number>
   gmail:         { email: string; lastSync: string | null } | null
   needs:         string[]
-  features:      { weeklyApplications: number; coverLetters: boolean; linkedIn: boolean; interviewGuarantee: boolean; cvChanges: number }
+  features:      { weeklyApplications: number; coverLetters: boolean; linkedIn: boolean; managedService: boolean; cvChanges: number }
   cvReviewDone:  boolean
 }
 
 interface AdminStats {
-  total: number; explore: number; launch: number; momentum: number
+  total: number; explore: number; launch: number; momentum: number; elite?: number
   trialing: number; pastDue: number; needsAttention: number
   totalApplications: number; totalApplied: number; totalInterviews: number; totalOffers: number
 }
@@ -49,18 +49,21 @@ const PLAN_GRADIENT: Record<string, string> = {
   EXPLORE:  'from-teal-500 to-cyan-600',
   LAUNCH:   'from-blue-500 to-indigo-600',
   MOMENTUM: 'from-violet-500 to-purple-600',
+  ELITE:    'from-amber-400 to-amber-600',
 }
 const PLAN_BADGE: Record<string, string> = {
   STARTER:  'bg-slate-100 text-slate-600 ring-slate-200',
   EXPLORE:  'bg-teal-50 text-teal-700 ring-teal-200',
   LAUNCH:   'bg-blue-50 text-blue-700 ring-blue-200',
   MOMENTUM: 'bg-violet-50 text-violet-700 ring-violet-200',
+  ELITE:    'bg-amber-50 text-amber-800 ring-amber-300',
 }
 const PLAN_LABEL: Record<string, string> = {
   STARTER:  'Starter',
   EXPLORE:  'Explore',
   LAUNCH:   'Launch',
   MOMENTUM: 'Pro',
+  ELITE:    'Elite Concierge',
 }
 const STATUS_DOT: Record<string, string> = {
   ACTIVE:     'bg-emerald-400',
@@ -382,7 +385,7 @@ function CustomerDetail({ u }: { u: AdminUser }) {
           <div className="mt-auto pt-3 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Change plan</p>
             <div className="flex gap-1.5">
-              {['STARTER','EXPLORE','LAUNCH','MOMENTUM'].map(plan => (
+              {['STARTER','EXPLORE','LAUNCH','MOMENTUM','ELITE'].map(plan => (
                 <button key={plan} onClick={() => changePlan.mutate(plan)}
                   disabled={u.plan === plan || changePlan.isPending}
                   className={`flex-1 text-xs py-1.5 rounded-lg font-semibold transition-all ${
@@ -476,7 +479,7 @@ export default function AdminUsersPage() {
           </div>
 
           <div className="flex gap-1">
-            {(['ALL','STARTER','EXPLORE','LAUNCH','MOMENTUM'] as const).map(p => (
+            {(['ALL','STARTER','EXPLORE','LAUNCH','MOMENTUM','ELITE'] as const).map(p => (
               <button key={p} onClick={() => setPlan(p)}
                 className={`flex-1 text-[10px] font-semibold rounded-lg py-1 transition-all ${
                   planFilter === p

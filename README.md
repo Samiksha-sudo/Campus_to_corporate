@@ -32,10 +32,13 @@
 
 | Plan | Price / month | Applications / week | Extras |
 |---|---|---|---|
-| Starter | £0 | 0 | 1 CV change |
-| Explore | £10 | 10 | |
-| Launch | £20 | 50 | Unlimited CV changes, LinkedIn, 1 guaranteed interview/month |
-| Pro | £49 | 100 | Cover letters, multiple guaranteed interviews, dedicated specialist |
+| Starter | £0 | 0 | 1 free CV review, tracker, basic Evidence Bank |
+| Explore | £10 | 50 | 1 CV change, tracker up to 10 jobs |
+| Launch | £20 | 100 | Unlimited CV changes, LinkedIn optimisation |
+| Pro | £49 | 100 | Cover letters, dedicated career specialist |
+| Elite Concierge | £100 | 200 | Fully managed search: staff apply, do recruiter outreach and interview coordination with the customer's recorded consent |
+
+Weekly allowances are maximums, counted per UK week (Monday 00:00 Europe/London) from verified submissions only (`application_submissions`); there is no rollover and no interview guarantee. Apply migration `server/drizzle/0004_elite_concierge.sql` (back up first) and set `STRIPE_PRICE_ELITE` to the real £100/month Stripe price ID.
 
 The plan is taken from the **Stripe price actually paid** (by price ID, falling back to amount), so paying £49 always results in Pro (internal plan key stays `MOMENTUM`). If a customer holds more than one live subscription, the highest tier wins.
 
@@ -151,7 +154,7 @@ erDiagram
       string stripe_customer_id
     }
     subscriptions {
-      string plan "STARTER|EXPLORE|LAUNCH|MOMENTUM"
+      string plan "STARTER|EXPLORE|LAUNCH|MOMENTUM|ELITE"
       string status
       string stripe_subscription_id
       datetime current_period_end
@@ -206,7 +209,7 @@ npm run dev                          # client + server together
 
 ### Stripe setup
 
-1. Create recurring prices (Explore £10, Launch £20, Pro £49) and set `STRIPE_PRICE_EXPLORE`, `STRIPE_PRICE_LAUNCH`, `STRIPE_PRICE_MOMENTUM`.
+1. Create recurring prices (Explore £10, Launch £20, Pro £49, Elite Concierge £100) and set `STRIPE_PRICE_EXPLORE`, `STRIPE_PRICE_LAUNCH`, `STRIPE_PRICE_MOMENTUM`, `STRIPE_PRICE_ELITE`.
 2. Point a webhook at `/api/v1/stripe/webhook` with events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, and set `STRIPE_WEBHOOK_SECRET`.
 3. Locally, use `stripe listen --forward-to localhost:4000/api/v1/stripe/webhook`.
 

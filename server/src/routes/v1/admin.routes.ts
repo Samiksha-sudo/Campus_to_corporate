@@ -9,8 +9,10 @@ import { subscriptions } from '../../db/schema/subscriptions.js'
 import { gmailConnections } from '../../db/schema/gmail.js'
 import { applications } from '../../db/schema/applications.js'
 import { cvs }          from '../../db/schema/cvs.js'
-import { PLAN_LIMITS }  from '../../config/plans.js'
-import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
+import { applicationSubmissions } from '../../db/schema/concierge.js'
+import { PLAN_KEYS, planLimits } from '../../config/plans.js'
+import { getAllowance } from '../../services/allowance.service.js'
+import { ukWeekStart, ukWeekEnd, effectiveWeeklyUsed } from '../../utils/week.js'
 
 const router = Router()
 
@@ -52,17 +54,14 @@ router.get('/users', asyncHandler(async (_req, res) => {
     }
     const approvedCVs = allCVs.filter(c => c.status === 'APPROVED').length
 
-    const plan = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
-    const limits = PLAN_LIMITS[plan]
+    const plan = sub?.plan ?? 'STARTER'
+    const limits = planLimits(plan)
 
-    // Weekly usage — count actual submitted apps created since Monday
-    const weekStart = ukWeekStart()
-    const weeklyUsed = effectiveWeeklyUsed(sub, allApps.filter(a =>
-      !['SAVED', 'RECRUITER_OUTREACH'].includes(a.status) &&
-      new Date(a.createdAt) >= weekStart
-    ).length)
-    const weeklyLimit     = limits.weeklyApplications === Infinity ? 9999 : limits.weeklyApplications
-    const weeklyRemaining = Math.max(0, weeklyLimit - weeklyUsed)
+    // Weekly usage = verified submissions this UK week (same source as customer + entitlement checks)
+    const allowance = await getAllowance(u.id, plan, sub)
+    const weeklyUsed = allowance.used
+    const weeklyLimit = limits.weeklyApplications
+    const weeklyRemaining = allowance.remaining
 
     // What services this customer needs
     const needs: string[] = []
@@ -70,6 +69,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
     if (!u.profileComplete)                                   needs.push('Profile setup')
     if (!gmail)                                               needs.push('Gmail sync')
     if (plan === 'STARTER' || plan === 'EXPLORE')              needs.push('Plan upgrade')
+    if (limits.managedService)                                needs.push('Managed service')
     if (allCVs.filter(c => c.status !== 'ARCHIVED').length === 0) needs.push('First CV')
     if (allCVs.some(c => c.status === 'IN_REVIEW'))          needs.push('CV in review')
     if (allCVs.some(c => c.status === 'REQUIRES_CHANGES'))    needs.push('CV needs changes')
@@ -95,6 +95,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
       weeklyAppsUsed:      weeklyUsed,
       weeklyAppsLimit:     weeklyLimit,
       weeklyAppsRemaining: weeklyRemaining,
+      weeklyOutcomes:      allowance.outcomes,
 
       // Application counts
       totalApps:  allApps.length,
@@ -119,7 +120,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
         weeklyApplications: limits.weeklyApplications,
         coverLetters:       limits.coverLetters,
         linkedIn:           limits.linkedIn,
-        interviewGuarantee: limits.interviewGuarantee,
+        managedService:     limits.managedService,
         cvChanges:          limits.cvChanges,
       },
     }
@@ -131,6 +132,7 @@ router.get('/users', asyncHandler(async (_req, res) => {
     explore:           enriched.filter(u => u.plan === 'EXPLORE').length,
     launch:            enriched.filter(u => u.plan === 'LAUNCH').length,
     momentum:          enriched.filter(u => u.plan === 'MOMENTUM').length,
+    elite:             enriched.filter(u => u.plan === 'ELITE').length,
     trialing:          enriched.filter(u => u.planStatus === 'TRIALING').length,
     pastDue:           enriched.filter(u => u.planStatus === 'PAST_DUE').length,
     needsAttention:    enriched.filter(u => u.needs.length > 0).length,
@@ -151,14 +153,14 @@ router.get('/weekly', asyncHandler(async (req, res) => {
 
   const allUsers = await db.select().from(users).where(isNull(users.deletedAt)).orderBy(desc(users.createdAt))
   const subs = await db.select().from(subscriptions)
-  const apps = await db.select({ userId: applications.userId, status: applications.status, createdAt: applications.createdAt })
-    .from(applications).where(gte(applications.createdAt, rangeStart))
+  const apps = await db.select({ userId: applicationSubmissions.userId, outcome: applicationSubmissions.outcome, verified: applicationSubmissions.verified, createdAt: applicationSubmissions.createdAt })
+    .from(applicationSubmissions).where(gte(applicationSubmissions.createdAt, rangeStart))
 
   const planByUser = new Map(subs.map(s => [s.userId, s.plan]))
   const subByUser  = new Map(subs.map(s => [s.userId, s]))
   const buckets = new Map<string, number[]>()
   for (const a of apps) {
-    if (['SAVED', 'RECRUITER_OUTREACH'].includes(a.status)) continue
+    if (a.outcome !== 'SUBMITTED' || !a.verified) continue
     const t = new Date(a.createdAt).getTime()
     let idx = -1
     for (let i = starts.length - 1; i >= 0; i--) { if (t >= starts[i].getTime()) { idx = i; break } }
@@ -169,12 +171,12 @@ router.get('/weekly', asyncHandler(async (req, res) => {
   }
 
   const customers = allUsers.map(u => {
-    const plan = (planByUser.get(u.id) ?? 'STARTER') as keyof typeof PLAN_LIMITS
-    const limit = PLAN_LIMITS[plan].weeklyApplications
+    const plan = planByUser.get(u.id) ?? 'STARTER'
+    const limit = planLimits(plan).weeklyApplications
     const perWeek = buckets.get(u.id) ?? new Array(weeks).fill(0)
     return {
       id: u.id, name: `${u.firstName} ${u.lastName}`, email: u.email, plan,
-      weeklyLimit: limit === Infinity ? 9999 : limit,
+      weeklyLimit: limit,
       thisWeek: effectiveWeeklyUsed(subByUser.get(u.id), perWeek[weeks - 1]),
       perWeek,
     }
@@ -182,7 +184,7 @@ router.get('/weekly', asyncHandler(async (req, res) => {
 
   res.json({ success: true, data: {
     weeks: starts.map(d => d.toISOString()),
-    resetsAt: ukWeekStart(new Date(Date.now() + 7 * 864e5)).toISOString(),
+    resetsAt: ukWeekEnd().toISOString(),
     customers,
   } })
 }))
@@ -214,8 +216,7 @@ router.patch('/users/:id/role', asyncHandler(async (req, res) => {
 // PATCH /api/admin/users/:id/plan — manually set plan (for custom arrangements)
 router.patch('/users/:id/plan', asyncHandler(async (req, res) => {
   const { plan } = req.body as { plan: string }
-  const validPlans = ['STARTER','EXPLORE','LAUNCH','MOMENTUM']
-  if (!validPlans.includes(plan)) {
+  if (!(PLAN_KEYS as string[]).includes(plan)) {
     res.status(400).json({ success: false, error: { code: 'INVALID_PLAN', message: 'Invalid plan' } })
     return
   }

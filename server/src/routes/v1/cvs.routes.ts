@@ -7,7 +7,7 @@ import { asyncHandler }  from '../../utils/asyncHandler.js'
 import { db }            from '../../config/database.js'
 import { cvs }           from '../../db/schema/cvs.js'
 import { subscriptions } from '../../db/schema/subscriptions.js'
-import { PLAN_LIMITS }   from '../../config/plans.js'
+import { planLimits }    from '../../config/plans.js'
 import { AppError }      from '../../utils/errors.js'
 
 const router = Router()
@@ -55,8 +55,8 @@ router.post('/', asyncHandler(async (req, res) => {
   // Check plan limits
   const [sub] = await db.select().from(subscriptions)
     .where(eq(subscriptions.userId, userId)).limit(1)
-  const plan = (sub?.plan ?? 'EXPLORE') as keyof typeof PLAN_LIMITS
-  const limits = PLAN_LIMITS[plan]
+  const plan = sub?.plan ?? 'STARTER'
+  const limits = planLimits(plan)
 
   const existing = await db.select().from(cvs).where(eq(cvs.userId, userId))
   const usedChanges = existing.filter(c => c.status !== 'DRAFT').length

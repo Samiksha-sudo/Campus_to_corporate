@@ -1,45 +1,39 @@
 import { Router }        from 'express'
 import { z }             from 'zod'
-import { eq, and, gte, count, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { authenticate }  from '../../middleware/auth.js'
 import { validate }      from '../../middleware/validate.js'
 import { asyncHandler }  from '../../utils/asyncHandler.js'
 import * as stripe       from '../../services/stripe.service.js'
 import { db }            from '../../config/database.js'
 import { subscriptions } from '../../db/schema/subscriptions.js'
-import { applications }  from '../../db/schema/applications.js'
-import { PLAN_LIMITS }   from '../../config/plans.js'
-import { ukWeekStart, effectiveWeeklyUsed } from '../../utils/week.js'
+import { PAID_PLANS, planLimits } from '../../config/plans.js'
+import { getAllowance } from '../../services/allowance.service.js'
 
 const router = Router()
 
-const checkoutSchema = z.object({ plan: z.enum(['EXPLORE', 'LAUNCH', 'MOMENTUM']) })
+const checkoutSchema = z.object({ plan: z.enum(PAID_PLANS as [string, ...string[]]) })
 
 // GET /api/stripe/subscription — current plan + usage
 router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
   const [sub] = await db.select().from(subscriptions)
     .where(eq(subscriptions.userId, req.user!.id)).limit(1)
-  const plan   = (sub?.plan ?? 'STARTER') as keyof typeof PLAN_LIMITS
-  const limits = PLAN_LIMITS[plan]
-
-  const weekStart = ukWeekStart()
-
-  // Count actual submitted applications this week (exclude just-saved or recruiter outreach)
-  const [weekRow] = await db.select({ total: count() }).from(applications)
-    .where(and(
-      eq(applications.userId, req.user!.id),
-      gte(applications.createdAt, weekStart),
-      sql`${applications.status} NOT IN ('SAVED', 'RECRUITER_OUTREACH')`,
-    ))
-  const weeklyUsed = effectiveWeeklyUsed(sub, weekRow?.total ?? 0)
+  const plan      = sub?.plan ?? 'STARTER'
+  const limits    = planLimits(plan)
+  // Allowance comes from the verified-submission log, the same source the staff/entitlement checks use
+  const allowance = await getAllowance(req.user!.id, plan, sub)
 
   res.json({
     success: true,
     data: {
       plan:                   plan,
       status:                 sub?.status ?? 'ACTIVE',
-      weeklyApplicationsUsed: weeklyUsed,
+      weeklyApplicationsUsed: allowance.used,
       weeklyApplicationsLimit:limits.weeklyApplications,
+      weeklyApplicationsRemaining: allowance.remaining,
+      weeklyResetsAt:         allowance.resetsAt,
+      weeklyOutcomes:         allowance.outcomes,
+      managedService:         limits.managedService,
       trialEnd:               sub?.trialEnd ?? null,
       currentPeriodEnd:       sub?.currentPeriodEnd ?? null,
       cancelAtPeriodEnd:      sub?.cancelAtPeriodEnd ?? 0,

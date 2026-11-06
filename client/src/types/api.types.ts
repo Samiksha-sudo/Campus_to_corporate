@@ -52,7 +52,7 @@ export type ApplicationStatus =
   | 'NO_RESPONSE'
   | 'UNKNOWN'
 
-export type SubscriptionPlan = 'EXPLORE' | 'LAUNCH' | 'MOMENTUM'
+export type SubscriptionPlan = 'STARTER' | 'EXPLORE' | 'LAUNCH' | 'MOMENTUM' | 'ELITE'
 
 export type UserRole =
   | 'CUSTOMER'

@@ -3,7 +3,7 @@ import {
 } from 'drizzle-orm/mysql-core'
 import { sql } from 'drizzle-orm'
 
-export const planEnum = mysqlEnum('plan', ['STARTER', 'EXPLORE', 'LAUNCH', 'MOMENTUM'])
+export const planEnum = mysqlEnum('plan', ['STARTER', 'EXPLORE', 'LAUNCH', 'MOMENTUM', 'ELITE'])
 export const subStatusEnum = mysqlEnum('status', ['ACTIVE', 'PAST_DUE', 'CANCELED', 'TRIALING', 'INCOMPLETE'])
 
 export const subscriptions = mysqlTable('subscriptions', {

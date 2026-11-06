@@ -5,6 +5,7 @@ import stripeRoutes        from './v1/stripe.routes.js'
 import adminRoutes         from './v1/admin.routes.js'
 import cvsRoutes           from './v1/cvs.routes.js'
 import applicationsRoutes  from './v1/applications.routes.js'
+import conciergeRoutes     from './v1/concierge.routes.js'
 
 const router = Router()
 
@@ -18,5 +19,6 @@ router.use('/stripe',       stripeRoutes)
 router.use('/admin',        adminRoutes)
 router.use('/cvs',          cvsRoutes)
 router.use('/applications', applicationsRoutes)
+router.use('/concierge',    conciergeRoutes)
 
 export default router
